@@ -13,6 +13,9 @@ urlpatterns = [
     path('signup/', views.signup_view, name='signup'),
     path('signup/done/', views.signup_done_view, name='signup_done'),
     path('login/', views.login_view, name='login'),
+    path('maintenance/', views.maintenance_view, name='maintenance'),
+    path('settings/maintenance/', views.maintenance_settings_view, name='maintenance_settings'),
+    path('contact/', views.contact_view, name='contact'),
 
     # ▼ ログアウト系の2画面 ▼
     path('logout/', views.logout_view, name='logout'),                         # ① ログアウト確認画面

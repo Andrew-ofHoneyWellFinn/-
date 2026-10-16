@@ -36,6 +36,12 @@
     .auth-links { text-align: center; margin-top: 24px; font-size: 14px; }
     .auth-links a { color: #1a73e8; text-decoration: none; font-weight: bold; }
     .auth-links a:hover { text-decoration: underline; }
+    .policy-section { margin: 24px 0 18px; padding: 14px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa; }
+    .policy-section h3 { margin: 0 0 8px; color: #333; font-size: 15px; }
+    .policy-section p { margin: 0; color: #555; font-size: 12px; line-height: 1.7; }
+    .agreement-group { margin: 18px 0 8px; }
+    .agreement-label { display: flex !important; align-items: flex-start; gap: 8px; font-weight: normal !important; line-height: 1.5; }
+    .agreement-label input { width: 18px; height: 18px; flex: 0 0 auto; margin: 0; }
 </style>
 {% endblock %}
 
@@ -55,6 +61,7 @@
 
         <!-- Djangoのフォーム要素を1つずつ綺麗に配置する -->
         {% for field in form %}
+        {% if field.name != 'agreement' %}
             <div class="auth-group">
                 <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                 
@@ -78,7 +85,28 @@
                     {{ field.errors }}
                 {% endif %}
             </div>
+        {% endif %}
         {% endfor %}
+
+        <section class="policy-section" id="terms">
+            <h3>利用規約</h3>
+            <p>本サービスを利用する場合は、他の利用者や第三者の権利を尊重し、法令や公序良俗に反する行為をしないものとします。投稿内容は利用者自身の責任で管理してください。</p>
+        </section>
+
+        <section class="policy-section" id="privacy">
+            <h3>プライバシーポリシー</h3>
+            <p>登録時に入力されたユーザー名とメールアドレスは、アカウント管理と本サービスの提供に使用します。法令に基づく場合を除き、本人の同意なく第三者へ提供することはありません。</p>
+        </section>
+
+        <div class="agreement-group">
+            <label class="agreement-label" for="{{ form.agreement.id_for_label }}">
+                {{ form.agreement }}
+                <span>利用規約とプライバシーポリシーに同意します</span>
+            </label>
+            {% if form.agreement.errors %}
+                {{ form.agreement.errors }}
+            {% endif %}
+        </div>
 
         <button type="submit" class="btn-auth">新規登録</button>
     </form>

@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}メンテナンス設定 | 旅ミッケ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .maintenance-settings-container { max-width: 620px; margin: 48px auto; padding: 36px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .maintenance-settings-title { margin: 0 0 10px; color: #1f2937; font-size: 28px; font-weight: 700; }
+    .maintenance-settings-description { margin: 0 0 28px; color: #6b7280; line-height: 1.7; }
+    .maintenance-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; color: #374151; font-weight: 700; }
+    .maintenance-toggle input { width: 20px; height: 20px; }
+    .maintenance-save { width: 100%; padding: 13px; border: 0; border-radius: 4px; background: #2563eb; color: white; font-size: 16px; font-weight: 700; cursor: pointer; }
+    .maintenance-save:hover { background: #1d4ed8; }
+    html.dark .maintenance-settings-container { background: #1f2937; }
+    html.dark .maintenance-settings-title, html.dark .maintenance-toggle { color: #f3f4f6; }
+    html.dark .maintenance-settings-description { color: #d1d5db; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="maintenance-settings-container">
+    <h1 class="maintenance-settings-title">メンテナンス設定</h1>
+    <p class="maintenance-settings-description">有効にすると、管理者以外のユーザーはログイン後にメンテナンス画面へ移動します。</p>
+    <form method="post">
+        {% csrf_token %}
+        <label class="maintenance-toggle" for="maintenance_mode">
+            <input type="checkbox" id="maintenance_mode" name="maintenance_mode" {% if site_setting.maintenance_mode %}checked{% endif %}>
+            メンテナンス中を表示する
+        </label>
+        <button type="submit" class="maintenance-save">設定を保存</button>
+    </form>
+</div>
+{% endblock %}

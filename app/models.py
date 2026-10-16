@@ -162,3 +162,15 @@ class Follow(models.Model):
 
     def __str__(self):
         return f"{self.follower.username} follows {self.following.username}"
+
+
+class SiteSetting(models.Model):
+    maintenance_mode = models.BooleanField(default=False, verbose_name='メンテナンス中')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='更新日時')
+
+    class Meta:
+        verbose_name = 'サイト設定'
+        verbose_name_plural = 'サイト設定'
+
+    def __str__(self):
+        return 'サイト設定'

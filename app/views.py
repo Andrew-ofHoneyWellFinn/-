@@ -3,6 +3,7 @@ import json
 import time # APIリトライ待機用
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
+from django.core.mail import send_mail
 from django.utils.timezone import localtime
 from django.utils import timezone
 from django.db.models import Q 
@@ -10,12 +11,13 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_POST
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.cache import never_cache
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.conf import settings # ★追加：settings.pyからAPIキーを取得するため
 from google import genai
 
-from .models import Post, PostImage, VisitHistory, Profile, Follow
-from .forms import SignUpForm
+from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow
+from .forms import ContactForm, SignUpForm
 
 
 # ▼ プロフィールやトレンドのモックデータ
@@ -35,6 +37,7 @@ def index_view(request):
         return redirect('timeline')
     return render(request, 'index.html')
 
+@never_cache
 def signup_view(request):
     if request.method == 'POST':
         form = SignUpForm(request.POST)
@@ -48,12 +51,36 @@ def signup_view(request):
 def signup_done_view(request):
     return render(request, 'signup_done.html')
 
+@login_required
+def contact_view(request):
+    submitted = False
+    if request.method == 'POST':
+        form = ContactForm(request.POST)
+        if form.is_valid():
+            send_mail(
+                subject=f"[旅ミッケ] {form.cleaned_data['subject']}",
+                message=(
+                    f"送信者: {request.user.username} ({request.user.email})\n\n"
+                    f"{form.cleaned_data['message']}"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[settings.CONTACT_EMAIL],
+                fail_silently=False,
+            )
+            submitted = True
+    else:
+        form = ContactForm()
+    return render(request, 'contact.html', {'form': form, 'submitted': submitted})
+
 def login_view(request):
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+            site_setting = SiteSetting.objects.order_by('pk').first()
+            if site_setting and site_setting.maintenance_mode and not (user.is_staff or user.is_superuser):
+                return redirect('maintenance')
             next_url = request.POST.get('next')
             if next_url:
                 return redirect(next_url)
@@ -68,6 +95,20 @@ def login_view(request):
     form.fields['username'].label = 'ユーザー名 または メールアドレス'
     form.fields['password'].label = 'パスワード'
     return render(request, 'login.html', {'form': form})
+
+def maintenance_view(request):
+    return render(request, 'maintenance.html')
+
+def is_site_admin(user):
+    return user.is_authenticated and (user.is_staff or user.is_superuser)
+
+@user_passes_test(is_site_admin)
+def maintenance_settings_view(request):
+    site_setting, _ = SiteSetting.objects.get_or_create(pk=1)
+    if request.method == 'POST':
+        site_setting.maintenance_mode = request.POST.get('maintenance_mode') == 'on'
+        site_setting.save(update_fields=['maintenance_mode', 'updated_at'])
+    return render(request, 'maintenance_settings.html', {'site_setting': site_setting})
 
 def logout_view(request):
     return render(request, 'logout_confirm.html')

@@ -140,9 +140,12 @@ AUTHENTICATION_BACKENDS = [
     'app.backends.EmailOrUsernameModelBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+LOGIN_URL = 'login'
 
 # パスワードリセットメールをVSCodeのターミナル（コンソール）に出力する設定
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='webmaster@localhost')
+CONTACT_EMAIL = env('CONTACT_EMAIL', default='admin@localhost')
 
 # AWS S3設定（環境変数にAWSキーがある場合のみS3を使用する）
 if env('AWS_ACCESS_KEY_ID', default=None):
