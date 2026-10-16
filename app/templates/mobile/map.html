@@ -1,6 +1,6 @@
 {% extends 'mobile/base.html' %}
 
-{% block title %}マップ | マッピン{% endblock %}
+{% block title %}マップ | 旅ミッケ{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -35,7 +35,7 @@
         max-width: 140px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         pointer-events: none; 
-        transition: background-color 0.3s, color 0.3s; /* ★追加: 色の切り替えを滑らかに */
+        transition: background-color 0.3s, color 0.3s;
     }
 
     @keyframes slideUp {
@@ -68,7 +68,6 @@
             </button>
         </div>
 
-        <!-- ★エリアボタン行 -->
         <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 pointer-events-auto">
             <button type="button" onclick="jumpToArea('okayama_city')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🏙️ 岡山駅前</button>
             <button type="button" onclick="jumpToArea('kurashiki')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🏘️ 倉敷美観地区</button>
@@ -77,7 +76,6 @@
             <button type="button" onclick="jumpToArea('northern')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🏔️ 備北・県北</button>
         </div>
 
-        <!-- 既存フィルター＆ ★鮮度設定ボタン追加 -->
         <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 pointer-events-auto">
             <button type="button" onclick="changeZoomLevel('all', this)" class="filter-btn active shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🌐 すべて</button>
             <button type="button" onclick="changeZoomLevel('10', this)" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🚗 10km</button>
@@ -95,7 +93,6 @@
     <div id="map" class="flex-grow w-full"></div>
 </div>
 
-<!-- ==================== ★ 【追加】鮮度設定モーダル ★ ==================== -->
 <div id="freshnessModal" onclick="if(event.target.id==='freshnessModal') closeFreshnessModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="max-height: 90vh;">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0 bg-white dark:bg-gray-800 relative z-10">
@@ -153,8 +150,6 @@
     </div>
 </div>
 
-<!-- ==================== 既存の各種モーダル ==================== -->
-<!-- 新規スポット確認モーダル -->
 <div id="newSpotPromptModal" onclick="if(event.target.id==='newSpotPromptModal') closeNewSpotPromptModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
@@ -165,20 +160,17 @@
     </div>
 </div>
 
-<!-- 投稿詳細モーダル -->
 <div id="spotDetailModal" onclick="if(event.target.id==='spotDetailModal') closeSpotDetailModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="height: 85vh;">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
             <h3 class="font-bold text-base text-gray-900 dark:text-white truncate pr-2" id="detailSpotName">📍 スポット名</h3>
             <button type="button" onclick="closeSpotDetailModal()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold shrink-0 text-gray-500">✕</button>
         </div>
-        <div id="spotDetailContent" class="p-5 overflow-y-auto flex-grow pb-8 bg-gray-50 dark:bg-gray-900">
-            <!-- JSで投稿カードのHTMLがここに挿入されます -->
-        </div>
+        <!-- ★ここに投稿詳細とタイムラインが挿入されます -->
+        <div id="spotDetailContent" class="p-5 overflow-y-auto flex-grow pb-8 bg-gray-50 dark:bg-gray-900"></div>
     </div>
 </div>
 
-<!-- スポット登録モーダル -->
 <div id="spotModal" onclick="if(event.target.id==='spotModal') closeSpotModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col animate-slide-up" style="max-height: 90vh;">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0 bg-white dark:bg-gray-800 relative z-10">
@@ -243,7 +235,6 @@
     </div>
 </div>
 
-<!-- AI提案モーダル -->
 <div id="aiModal" onclick="if(event.target.id==='aiModal') closeAiModal()" class="hidden fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="max-height: 90vh;">
         <div class="px-5 py-4 bg-gradient-to-r from-indigo-600 to-purple-700 text-white flex justify-between shrink-0 relative z-10">
@@ -265,14 +256,11 @@
 {{ posts|json_script:"initial-spots-data" }}
 
 <script>
-    // ==========================================
-    // ★ 追加：鮮度設定（ユーザー設定の保存と読み込み）
-    // ==========================================
     let freshConfig = JSON.parse(localStorage.getItem('freshConfig')) || {
-        l1_hours: 1,  l1_color: '#ef4444', // 超新鮮
-        l2_hours: 3,  l2_color: '#f97316', // 新鮮
-        l3_color: '#9ca3af',               // それ以降
-        hide_hours: 12                     // 非表示
+        l1_hours: 1,  l1_color: '#ef4444', 
+        l2_hours: 3,  l2_color: '#f97316', 
+        l3_color: '#9ca3af',               
+        hide_hours: 12                     
     };
 
     function openFreshnessModal() {
@@ -303,7 +291,6 @@
         applyFreshnessToAllMarkers(); 
     }
 
-    // ★ 追加：鮮度計算と色の書き換えロジック
     const pinSVGHole = "M12,2C8.1,2,5,5.1,5,9c0,5.2,7,13,7,13s7-7.8,7-13C19,5.1,15.9,2,12,2z M12,11.5c-1.4,0-2.5-1.1-2.5-2.5s1.1-2.5,2.5-2.5s2.5,1.1,2.5,2.5S13.4,11.5,12,11.5z";
     
     function applyFreshnessToAllMarkers() {
@@ -327,14 +314,12 @@
 
             item.isFreshShow = isFreshShow;
 
-            // ピンのSVG色を変更
             item.marker.setIcon({
                 path: pinSVGHole, scale: 1.5, fillColor: color, fillOpacity: 1, 
                 strokeWeight: 1, strokeColor: "#ffffff",
                 anchor: new google.maps.Point(12, 22), labelOrigin: new google.maps.Point(12, -8)
             });
 
-            // カスタムラベルの色も追従
             const label = item.marker.getLabel();
             if (label) {
                 label.className = 'spot-custom-label'; 
@@ -381,6 +366,22 @@
         }
     }
 
+    // ★追加：別のピン詳細カードへスムーズに飛ぶ機能
+    function jumpToSpotOnMap(lat, lng, spotId) {
+        const modalContent = document.getElementById('spotDetailContent');
+        if (modalContent) modalContent.scrollTop = 0; // スクロール位置を一番上に戻す
+        
+        const targetMarkerObj = spotMarkers.find(item => item.data.id === spotId);
+        if (targetMarkerObj) {
+            google.maps.event.trigger(targetMarkerObj.marker, 'click');
+        } else {
+            // 表示フィルター外などでピンが見つからない場合
+            map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lng) });
+            map.setZoom(16);
+            closeSpotDetailModal();
+        }
+    }
+
 
     function initMap() {
         const isDark = document.documentElement.classList.contains('dark');
@@ -415,9 +416,7 @@
             addSpotMarkerToMap(spot, shouldOpenImmediately);
         });
 
-        // ★初期化時に色と表示状態を適用
         applyFreshnessToAllMarkers();
-        // ★1分ごとに自動で鮮度計算を再実行
         setInterval(applyFreshnessToAllMarkers, 60000);
 
         map.addListener('click', (event) => {
@@ -547,7 +546,7 @@
 
     function closeNewSpotPromptModal() { document.getElementById('newSpotPromptModal').classList.add('hidden'); }
 
-    // ★改修：初期の色指定はダミーで行い、isFreshShowフラグを追加
+    // ★改修：同じエリアの他の投稿を生成して表示する
     function addSpotMarkerToMap(spot, openImmediately = false) {
         const sMarker = new google.maps.Marker({
             position: { lat: spot.lat, lng: spot.lng }, map: map, zIndex: 10,
@@ -561,9 +560,6 @@
         }
 
         sMarker.addListener('click', () => {
-            const isDark = document.documentElement.classList.contains('dark');
-            const bgColor = isDark ? '#1f2937' : '#ffffff';
-            const textColor = isDark ? '#f3f4f6' : '#111827';
             const naviUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
             const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=400x200&location=${spot.lat},${spot.lng}&key={{ api_key }}`;
             const targetImgUrl = spot.image_url ? spot.image_url : streetViewUrl;
@@ -581,6 +577,53 @@
 
             const initial = spot.username ? spot.username.charAt(0).toUpperCase() : 'G';
             document.getElementById('detailSpotName').innerText = spot.spot_name;
+
+            // ==============================================================
+            // ★追加：同じエリアの他の投稿（エリアタイムライン）を生成する処理
+            // ==============================================================
+            let areaTimelineHtml = '';
+            
+            // 投稿にエリアデータが無い場合は、座標からエリアを推測
+            const currentSpotAreaKey = spot.area || determineAreaFromLatLng(spot.lat, spot.lng).key;
+            const currentAreaName = AREA_DEFINITIONS[currentSpotAreaKey] ? AREA_DEFINITIONS[currentSpotAreaKey].name : 'このエリア';
+
+            // 同じエリアで、かつ「自分自身ではなく」「非表示になっていない（鮮度が保たれている）」投稿を最大10件抽出
+            const sameAreaSpots = spotMarkers.filter(item => {
+                const itemAreaKey = item.data.area || determineAreaFromLatLng(item.data.lat, item.data.lng).key;
+                return itemAreaKey === currentSpotAreaKey && item.data.id !== spot.id && item.isFreshShow;
+            }).slice(0, 10);
+
+            if (sameAreaSpots.length > 0) {
+                areaTimelineHtml += `<div class="mt-6 pt-5 border-t border-gray-200 dark:border-gray-700">`;
+                areaTimelineHtml += `<h4 class="font-bold text-sm text-gray-900 dark:text-white mb-3 flex items-center gap-1.5"><span class="text-lg">🗺️</span> ${currentAreaName} の他の情報</h4>`;
+                areaTimelineHtml += `<div class="space-y-3">`;
+
+                sameAreaSpots.forEach(item => {
+                    const s = item.data;
+                    const sImg = s.image_url ? s.image_url : `https://maps.googleapis.com/maps/api/streetview?size=200x200&location=${s.lat},${s.lng}&key={{ api_key }}`;
+                    const sInitial = s.username ? s.username.charAt(0).toUpperCase() : 'G';
+                    
+                    // 縦並びのコンパクトなリスト型カード
+                    areaTimelineHtml += `
+                        <div class="flex gap-3 bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm cursor-pointer active:scale-95 transition" onclick="jumpToSpotOnMap(${s.lat}, ${s.lng}, ${s.id})">
+                            <div class="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-100 dark:bg-gray-700">
+                                <img src="${sImg}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                            </div>
+                            <div class="flex-grow min-w-0">
+                                <h5 class="font-bold text-xs text-gray-900 dark:text-white truncate">${s.spot_name}</h5>
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400 mt-1 truncate">${s.content}</p>
+                                <div class="flex items-center gap-1.5 mt-1.5">
+                                    <div class="w-3.5 h-3.5 rounded-full bg-neutral-800 text-white font-bold flex items-center justify-center text-[7px] shrink-0">${sInitial}</div>
+                                    <span class="text-[9px] text-gray-400">${s.created_at || ''}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                areaTimelineHtml += `</div></div>`;
+            }
+            // ==============================================================
             
             const html = `
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
@@ -615,6 +658,8 @@
                         🗺️ ここへ行く（ナビ起動）
                     </a>
                 </div>
+                
+                ${areaTimelineHtml}
             `;
             
             document.getElementById('spotDetailContent').innerHTML = html;
@@ -631,7 +676,6 @@
 
     function closeSpotDetailModal() { document.getElementById('spotDetailModal').classList.add('hidden'); }
 
-    // ★改修：鮮度の表示設定（isFreshShow）も加味して表示を制御する
     function updateMarkersVisibility() {
         spotMarkers.forEach(item => {
             let shouldDisplay = spotsVisible && item.isFreshShow;
@@ -793,7 +837,7 @@
                 closeSpotModal(); form.reset(); clearSpotImage(); 
                 if(tempClickMarker) tempClickMarker.setMap(null);
                 addSpotMarkerToMap(data.spot); 
-                applyFreshnessToAllMarkers(); // ★登録直後に色と表示を更新
+                applyFreshnessToAllMarkers(); 
             } else { alert("エラー: " + data.message); }
         } catch(e) { alert("エラーが発生しました。"); }
         btn.disabled = false; btn.innerText = "📍 マップに登録する";
