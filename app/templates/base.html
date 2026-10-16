@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- 各ページのタイトルがここに入る -->
-    <title>{% block title %}旅ミッケ{% endblock %}</title>
+    <title>{% block title %}マッピン{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 各ページ専用の <style> や <script> がここに入る -->
     {% block extra_head %}{% endblock %}
@@ -56,7 +56,7 @@
         <a href="{% if user.is_authenticated %}{% url 'timeline' %}{% else %}{% url 'index' %}{% endif %}" 
            class="text-xl font-bold tracking-wide flex items-center gap-2 hover:opacity-80 active:scale-95 transition cursor-pointer">
             <span>📍</span>
-            <span>旅ミッケ</span>
+            <span>マッピン</span>
         </a>
 
         <!-- 右側：ナビゲーション＆認証ボタン -->
