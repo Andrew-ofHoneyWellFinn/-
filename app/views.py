@@ -240,6 +240,8 @@ def map_view(request):
             return JsonResponse({'status': 'error', 'message': 'ログインが必要です'}, status=403)
 
         spot_name = request.POST.get('spot_name', '名称未設定')
+        area = request.POST.get('area', 'other')
+        tenant = request.POST.get('tenant', '')
         category = request.POST.get('category', 'local')
         mobility = request.POST.get('mobility', 'car')
         content = request.POST.get('content', '')
@@ -251,6 +253,8 @@ def map_view(request):
         new_post = Post.objects.create(
             user=user,
             spot_name=spot_name,
+            area=area,
+            tenant=tenant,
             latitude=lat,
             longitude=lng,
             mobility=mobility,

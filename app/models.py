@@ -22,11 +22,24 @@ class Post(models.Model):
         ('road', '🛣️ 道路・混雑状況'),
         ('local', '📍 地域のみどころ'),
     )
+    # ★ 追加：エリアの選択肢（後から増やせます）
+    AREA_CHOICES = (
+        ('okayama_city', '🏙️ 岡山・駅前エリア'),
+        ('kurashiki', '🏘️ 倉敷・美観地区エリア'),
+        ('kibiji', '🚲 吉備路エリア'),
+        ('setouchi', '🌊 瀬戸内・玉野エリア'),
+        ('northern', '🏔️ 備北・県北エリア'),
+        ('other', '📍 その他エリア'),
+    )
 
     # 投稿者情報
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts', verbose_name='投稿者')
     spot_name = models.CharField(max_length=100, verbose_name='スポット名・場所')
     
+    # ★ 追加：エリアとテナント情報
+    area = models.CharField(max_length=20, choices=AREA_CHOICES, default='other', verbose_name='エリア')
+    tenant = models.CharField(max_length=100, blank=True, null=True, verbose_name='テナント・施設名')
+
     # 位置情報（岡山県全域の座標）
     latitude = models.FloatField(verbose_name='緯度', default=34.6655)
     longitude = models.FloatField(verbose_name='経度', default=133.9180)
@@ -124,8 +137,6 @@ class Profile(models.Model):
     
     # ヘッダー画像（背景画像）
     header_image = models.ImageField("ヘッダー画像", upload_to='headers/', blank=True, null=True)
-    
-    # 他にも「SNSリンク」や「活動エリア」などを将来的に足すことができます
 
     def __str__(self):
         return f"{self.user.username}のプロフィール"
@@ -134,14 +145,11 @@ class Profile(models.Model):
 @receiver(post_save, sender=User)
 def create_or_save_user_profile(sender, instance, created, **kwargs):
     if created:
-        # ユーザーが新規作成された時は、プロフィールも作成する
         Profile.objects.create(user=instance)
     else:
-        # すでに存在するユーザー（ログイン時など）にプロファイルが無い場合のエラーを防ぐ
         try:
             instance.profile.save()
         except getattr(User, 'profile').RelatedObjectDoesNotExist:
-            # プロフィールが無ければ、このタイミングで作成してあげる
             Profile.objects.create(user=instance)
     
 # ===============================================
@@ -153,11 +161,9 @@ class Follow(models.Model):
     # フォローされる人（相手）
     following = models.ForeignKey(User, related_name='followers', on_delete=models.CASCADE)
     
-    # いつフォローしたか
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # 同じ人を2回フォローできないようにする制約
         unique_together = ('follower', 'following')
 
     def __str__(self):

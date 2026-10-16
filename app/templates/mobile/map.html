@@ -52,14 +52,13 @@
 {% block content %}
 <div class="relative flex flex-col flex-grow w-full h-full">
     
-    <!-- 検索バー・フィルター（常に地図の上） -->
     <div class="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2 pointer-events-none">
         <div class="flex gap-2 pointer-events-auto">
             <div class="flex-grow relative">
                 <input type="text" id="placeSearchInput" 
                        onkeydown="if(event.key==='Enter') searchPlaceOnMap()"
                        oninput="suggestOpenPoi(this.value)"
-                       placeholder="場所・施設を検索" 
+                       placeholder="場所・施設・エリアを検索" 
                        class="w-full px-4 py-3 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-300 dark:border-gray-600 rounded-full text-sm shadow-md focus:outline-none dark:text-white">
                 <div id="poiSuggestList" class="hidden absolute top-12 left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto"></div>
             </div>
@@ -68,23 +67,29 @@
             </button>
         </div>
 
+        <!-- ★追加：エリアに飛ぶボタンの列 -->
+        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 pointer-events-auto">
+            <button type="button" onclick="jumpToArea('okayama_city')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🏙️ 岡山駅前</button>
+            <button type="button" onclick="jumpToArea('kurashiki')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🏘️ 倉敷美観地区</button>
+            <button type="button" onclick="jumpToArea('kibiji')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🚲 吉備路</button>
+            <button type="button" onclick="jumpToArea('setouchi')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🌊 瀬戸内・玉野</button>
+            <button type="button" onclick="jumpToArea('northern')" class="filter-btn shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm backdrop-blur-sm border-indigo-200 text-indigo-700 bg-indigo-50">🏔️ 備北・県北</button>
+        </div>
+
+        <!-- 既存のフィルター列 -->
         <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 pointer-events-auto">
             <button type="button" onclick="changeZoomLevel('all', this)" class="filter-btn active shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🌐 すべて</button>
             <button type="button" onclick="changeZoomLevel('10', this)" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🚗 10km</button>
             <button type="button" onclick="changeZoomLevel('3', this)" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🚲 3km</button>
             <button type="button" onclick="changeZoomLevel('1', this)" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🚶 1km</button>
-            <button type="button" id="toggleSpotsBtn" onclick="toggleRegionalSpots()" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm border-blue-200 text-blue-600 dark:border-indigo-600 dark:text-indigo-400">
-                📍 ピンを隠す
-            </button>
+            <button type="button" id="toggleSpotsBtn" onclick="toggleRegionalSpots()" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm border-blue-200 text-blue-600">📍 ピン隠す</button>
         </div>
     </div>
 
-    <!-- マップ描画エリア -->
     <div id="map" class="flex-grow w-full"></div>
 </div>
 
-<!-- ==================== ★ 【追加】新規スポット確認モーダル ★ ==================== -->
-<!-- マップの何もないところをタップした時に出る画面 -->
+<!-- 新規スポット確認モーダル -->
 <div id="newSpotPromptModal" onclick="if(event.target.id==='newSpotPromptModal') closeNewSpotPromptModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
@@ -95,8 +100,7 @@
     </div>
 </div>
 
-<!-- ==================== ★ 【追加】投稿詳細モーダル（全画面対応） ★ ==================== -->
-<!-- すでに投稿されているピンをタップした時に出る画面（タイムラインのカードと同じデザイン） -->
+<!-- 投稿詳細モーダル -->
 <div id="spotDetailModal" onclick="if(event.target.id==='spotDetailModal') closeSpotDetailModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="height: 85vh;">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
@@ -109,7 +113,7 @@
     </div>
 </div>
 
-<!-- スポット登録モーダル（自作フォーム） -->
+<!-- ★改修：スポット登録モーダル -->
 <div id="spotModal" onclick="if(event.target.id==='spotModal') closeSpotModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col animate-slide-up" style="max-height: 90vh;">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0 bg-white dark:bg-gray-800 relative z-10">
@@ -121,14 +125,26 @@
             <input type="hidden" id="spotLat" name="lat">
             <input type="hidden" id="spotLng" name="lng">
             <input type="hidden" name="mobility" value="car">
+            <!-- ★追加：裏側で送信するエリア情報 -->
+            <input type="hidden" id="spotAreaInput" name="area" value="other">
+
             <div class="text-[11px] bg-blue-50 dark:bg-indigo-900/30 text-blue-800 dark:text-indigo-300 px-3 py-2.5 rounded-lg border border-blue-200 dark:border-indigo-800 flex justify-between items-center">
-                <span>🌐 座標: <strong id="coordDisplay"></strong></span>
-                <span class="opacity-80">タップで微調整可</span>
+                <span>🌐 エリア: <strong id="autoAreaDisplay">自動判定中...</strong></span>
+                <span class="opacity-80" id="coordDisplay"></span>
             </div>
+            
             <div>
-                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">場所の名前 <span class="text-red-500">*</span></label>
-                <input type="text" id="spotNameInput" name="spot_name" required placeholder="例：海沿いの絶景ベンチ" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none dark:bg-gray-700 dark:text-white">
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">施設・場所の名前 <span class="text-red-500">*</span></label>
+                <input type="text" id="spotNameInput" name="spot_name" required placeholder="例：イオンモール岡山、王子が岳" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none dark:bg-gray-700 dark:text-white">
             </div>
+
+            <!-- ★追加：テナント入力欄（任意） -->
+            <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">テナント名・詳細場所（任意）</label>
+                <input type="text" id="spotTenantInput" name="tenant" placeholder="例：1階フードコート、南側入り口前" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:border-blue-500 bg-gray-50 dark:bg-gray-800 dark:text-white">
+                <p class="text-[10px] text-gray-500 mt-1">大型施設の中で特定のお店や場所を共有したい場合に入力してください。</p>
+            </div>
+
             <div>
                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">カテゴリ（ピンの色）</label>
                 <select id="spotCategoryInput" name="category" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-white">
@@ -153,8 +169,8 @@
             <div>
                 <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">タグ</label>
                 <div class="flex flex-wrap gap-2 text-[11px]">
-                    <label><input type="checkbox" name="sub_tags" value="駐車場が広い" class="peer hidden"><span class="px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 dark:peer-checked:bg-indigo-900 dark:peer-checked:text-indigo-300 font-bold block">＋ 🅿️ 駐車場が広い</span></label>
-                    <label><input type="checkbox" name="sub_tags" value="季節もの・限定" class="peer hidden"><span class="px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 dark:peer-checked:bg-orange-900 dark:peer-checked:text-orange-300 font-bold block">＋ 🍁 季節もの・限定</span></label>
+                    <label><input type="checkbox" name="sub_tags" value="駐車場が広い" class="peer hidden"><span class="px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 font-bold block">＋ 🅿️ 駐車場が広い</span></label>
+                    <label><input type="checkbox" name="sub_tags" value="季節もの・限定" class="peer hidden"><span class="px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 font-bold block">＋ 🍁 季節もの・限定</span></label>
                 </div>
             </div>
             <div class="pt-2">
@@ -186,6 +202,46 @@
 {{ posts|json_script:"initial-spots-data" }}
 
 <script>
+    // ★追加：各エリアの定義（中心座標と名前）
+    const AREA_DEFINITIONS = {
+        okayama_city: { name: '🏙️ 岡山・駅前エリア', lat: 34.6655, lng: 133.9180 },
+        kurashiki: { name: '🏘️ 倉敷・美観地区エリア', lat: 34.5833, lng: 133.7719 },
+        kibiji: { name: '🚲 吉備路エリア', lat: 34.6738, lng: 133.8247 },
+        setouchi: { name: '🌊 瀬戸内・玉野エリア', lat: 34.4922, lng: 133.9450 },
+        northern: { name: '🏔️ 備北・県北エリア', lat: 35.0667, lng: 133.9997 }
+    };
+
+    // ★追加：緯度経度から最も近いエリアを判定する関数
+    function determineAreaFromLatLng(lat, lng) {
+        let closestAreaKey = 'other';
+        let minDistance = Infinity;
+
+        // ピタゴラスの定理を用いた簡易的な距離計算（正確な球面距離ではなく近似値です）
+        for (const [key, data] of Object.entries(AREA_DEFINITIONS)) {
+            const distance = Math.pow(lat - data.lat, 2) + Math.pow(lng - data.lng, 2);
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestAreaKey = key;
+            }
+        }
+        
+        // もしどのエリアの中心からも遠すぎる場合（約20km以上）は「other」とする
+        if (minDistance > 0.05) {
+            return { key: 'other', name: '📍 その他・エリア外' };
+        }
+        
+        return { key: closestAreaKey, name: AREA_DEFINITIONS[closestAreaKey].name };
+    }
+
+    // ★追加：上部のボタンを押したときにそのエリアにカメラを飛ばす関数
+    function jumpToArea(areaKey) {
+        if (AREA_DEFINITIONS[areaKey] && map) {
+            map.setCenter({ lat: AREA_DEFINITIONS[areaKey].lat, lng: AREA_DEFINITIONS[areaKey].lng });
+            map.setZoom(14); // エリア全体が見えるくらいのズーム
+        }
+    }
+
+
     function initMap() {
         const isDark = document.documentElement.classList.contains('dark');
         
@@ -212,6 +268,7 @@
 
         geocoder = new google.maps.Geocoder();
         placesService = new google.maps.places.PlacesService(map);
+        infoWindow = new google.maps.InfoWindow({ zIndex: 999 });
 
         initialSpots.forEach(spot => {
             const shouldOpenImmediately = (spot.id === paramSpotId);
@@ -235,27 +292,41 @@
         });
 
         if (navigator.geolocation) {
-            const geoOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 };
+            const geoOptions = {
+                enableHighAccuracy: true,
+                maximumAge: 0, 
+                timeout: 10000 
+            };
+
             navigator.geolocation.getCurrentPosition(
                 (position) => {
                     originPos = { lat: position.coords.latitude, lng: position.coords.longitude };
                     userPosAcquired = true;
+                    
                     if (!hasParam) map.setCenter(originPos);
+
                     if (userMarker) userMarker.setMap(null);
                     userMarker = new google.maps.Marker({
-                        position: originPos, map: map, zIndex: 999,
+                        position: originPos, 
+                        map: map,
+                        zIndex: 999,
                         icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#ea4335", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
                     });
                 },
-                () => console.warn("GPSエラー"), geoOptions
+                (err) => console.warn("GPSエラー:", err.message),
+                geoOptions
             );
+
             navigator.geolocation.watchPosition(
                 (position) => {
                     originPos = { lat: position.coords.latitude, lng: position.coords.longitude };
                     userPosAcquired = true;
-                    if (userMarker) userMarker.setPosition(originPos);
+                    if (userMarker) {
+                        userMarker.setPosition(originPos);
+                    }
                 },
-                () => console.warn("GPS追跡エラー"), geoOptions
+                (err) => console.warn("GPS追跡エラー:", err.message),
+                geoOptions
             );
         }
     }
@@ -264,10 +335,13 @@
         if (map && originPos) { 
             map.setCenter(originPos); 
             map.setZoom(15); 
+            
             if (!userMarker || !userMarker.getMap()) {
                 if(userMarker) userMarker.setMap(null);
                 userMarker = new google.maps.Marker({
-                    position: originPos, map: map, zIndex: 999,
+                    position: originPos, 
+                    map: map,
+                    zIndex: 999,
                     icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#ea4335", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
                 });
             } else {
@@ -275,6 +349,9 @@
             }
         } 
     }
+
+    const pinDropSound = new Audio('/static/sounds/missing_ping.mp3'); 
+    pinDropSound.volume = 1.0;
 
     const darkMapStyle = [
         { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
@@ -284,7 +361,7 @@
         { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] }
     ];
 
-    let map, geocoder, placesService, userMarker = null, tempClickMarker = null;
+    let map, geocoder, placesService, infoWindow, userMarker = null, tempClickMarker = null;
     let spotMarkers = [], spotsVisible = true, currentRadius = 'all', userPosAcquired = false;
     let originPos = { lat: 34.6655, lng: 133.9180 }; 
     const initialSpots = JSON.parse(document.getElementById('initial-spots-data').textContent);
@@ -296,9 +373,6 @@
         });
     }
 
-    // ==============================================================
-    // ★ 修正箇所：何もない場所をタップした時のモーダル表示
-    // ==============================================================
     function placeTempMarkerAndPrompt(pos, placeName, addressText) {
         if (tempClickMarker) tempClickMarker.setMap(null);
         tempClickMarker = new google.maps.Marker({ position: pos, map: map, animation: google.maps.Animation.DROP });
@@ -323,15 +397,11 @@
         document.getElementById('newSpotPromptModal').classList.remove('hidden');
         
         map.panTo(pos);
-        // モーダルが下から出るため、ピンが被らないように上にカメラをズラす
         setTimeout(() => map.panBy(0, 150), 100); 
     }
 
     function closeNewSpotPromptModal() { document.getElementById('newSpotPromptModal').classList.add('hidden'); }
 
-    // ==============================================================
-    // ★ 修正箇所：既存の投稿ピンをタップした時のモーダル表示
-    // ==============================================================
     function addSpotMarkerToMap(spot, openImmediately = false) {
         let pinColor = '#a855f7'; 
         if (spot.category === 'food') pinColor = '#f59e0b';
@@ -348,21 +418,28 @@
         }
 
         sMarker.addListener('click', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            const bgColor = isDark ? '#1f2937' : '#ffffff';
+            const textColor = isDark ? '#f3f4f6' : '#111827';
             const naviUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
-            const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${spot.lat},${spot.lng}&key={{ api_key }}`;
+            const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=400x200&location=${spot.lat},${spot.lng}&key={{ api_key }}`;
             const targetImgUrl = spot.image_url ? spot.image_url : streetViewUrl;
             
-            // タグのHTML作成
             let tagsHtml = '';
             if (spot.sub_tags && spot.sub_tags.length > 0) {
                 const tags = Array.isArray(spot.sub_tags) ? spot.sub_tags : spot.sub_tags.split(',');
                 tagsHtml = tags.map(t => `<span class="px-2.5 py-1 rounded-full font-bold bg-blue-50 text-blue-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px]">#${t.trim()}</span>`).join('');
             }
             
+            // ★追加：テナント情報が登録されていれば表示する
+            let tenantHtml = '';
+            if (spot.tenant && spot.tenant.trim() !== '') {
+                tenantHtml = `<p class="text-xs text-gray-500 font-bold mb-1">🏢 ${spot.tenant}</p>`;
+            }
+
             const initial = spot.username ? spot.username.charAt(0).toUpperCase() : 'G';
             document.getElementById('detailSpotName').innerText = spot.spot_name;
             
-            // タイムラインのカードと全く同じデザインのHTMLを構築
             const html = `
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
                     <div class="flex items-center gap-3 mb-3">
@@ -374,6 +451,8 @@
                             <p class="text-[10px] text-gray-500">${spot.created_at || ''}</p>
                         </div>
                     </div>
+
+                    ${tenantHtml}
 
                     <div class="flex flex-wrap gap-1.5 mb-3">
                         <span class="px-2 py-0.5 rounded font-bold bg-neutral-800 text-white text-[10px]">${spot.mobility_label || '移動手段'}</span>
@@ -410,8 +489,6 @@
 
     function closeSpotDetailModal() { document.getElementById('spotDetailModal').classList.add('hidden'); }
 
-    // ==============================================================
-
     function changeZoomLevel(radiusStr, btnElement) {
         document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
         if (btnElement) btnElement.classList.add('active');
@@ -437,6 +514,19 @@
     function suggestOpenPoi(keyword) {
         const listEl = document.getElementById('poiSuggestList');
         if (!keyword || keyword.length < 2) { listEl.classList.add('hidden'); return; }
+        
+        // ★追加：検索キーワードが「エリア」の場合、そのエリアに飛ぶ処理を差し込む
+        const matchingArea = Object.entries(AREA_DEFINITIONS).find(([key, data]) => data.name.includes(keyword) || keyword.includes("エリア"));
+        if (matchingArea) {
+            listEl.innerHTML = `
+                <button type="button" class="w-full text-left px-4 py-3 hover:bg-blue-50 text-sm block transition dark:hover:bg-gray-700 text-blue-600 font-bold" onclick="jumpToArea('${matchingArea[0]}'); document.getElementById('poiSuggestList').classList.add('hidden'); document.getElementById('placeSearchInput').value='${matchingArea[1].name}';">
+                    🌍 ${matchingArea[1].name}に移動する
+                </button>
+            `;
+            listEl.classList.remove('hidden');
+            return;
+        }
+
         clearTimeout(suggestTimer);
         suggestTimer = setTimeout(async () => {
             try {
@@ -494,11 +584,20 @@
     }
 
     function openSpotModal(lat, lng, defaultName) {
-        document.getElementById('spotLat').value = lat; document.getElementById('spotLng').value = lng;
+        document.getElementById('spotLat').value = lat; 
+        document.getElementById('spotLng').value = lng;
         document.getElementById('coordDisplay').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
         document.getElementById('spotNameInput').value = defaultName || '';
+        document.getElementById('spotTenantInput').value = ''; // フォーム初期化
+        
+        // ★追加：座標からエリアを自動判定してフォームにセット
+        const areaData = determineAreaFromLatLng(lat, lng);
+        document.getElementById('autoAreaDisplay').innerText = areaData.name;
+        document.getElementById('spotAreaInput').value = areaData.key;
+
         document.getElementById('spotModal').classList.remove('hidden');
     }
+    
     function closeSpotModal() { document.getElementById('spotModal').classList.add('hidden'); }
     function openAiModal() { document.getElementById('aiResultArea').classList.add('hidden'); document.getElementById('aiResultArea').innerHTML = ''; document.getElementById('aiModal').classList.remove('hidden'); }
     function closeAiModal() { document.getElementById('aiModal').classList.add('hidden'); }
