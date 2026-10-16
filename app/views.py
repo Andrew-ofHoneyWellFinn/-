@@ -283,6 +283,7 @@ def map_view(request):
             'content': new_post.content,
             'image_url': image_url,
             'created_at': localtime(new_post.created_at).strftime('%m月%d日 %H:%M'),
+            'created_timestamp': int(new_post.created_at.timestamp() * 1000),
         }
         
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -313,6 +314,7 @@ def map_view(request):
             'content': p.content,
             'image_url': first_image.image.url if first_image else '', 
             'created_at': localtime(p.created_at).strftime('%m月%d日 %H:%M'),
+            'created_timestamp': int(p.created_at.timestamp() * 1000), 
         })
 
     context = {
