@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}ログアウト確認 | 旅ミッケ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .auth-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; margin: 80px auto; text-align: center; box-sizing: border-box; }
+    .auth-title { margin-top: 0; color: #333; font-size: 22px; margin-bottom: 16px; font-weight: bold; }
+    .auth-desc { color: #666; font-size: 15px; margin-bottom: 30px; }
+    
+    .button-group { display: flex; justify-content: center; gap: 15px; }
+    
+    /* キャンセルボタン（グレー） */
+    .btn-cancel { padding: 12px 30px; background-color: #f1f3f4; color: #333; border: none; border-radius: 4px; font-weight: bold; font-size: 16px; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+    .btn-cancel:hover { background-color: #e8eaed; }
+    
+    /* ログアウトボタン（赤色で注意を引く） */
+    .btn-logout { padding: 12px 30px; background-color: #EA4335; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 16px; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+    .btn-logout:hover { background-color: #d33828; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 class="auth-title">ログアウトの確認</h2>
+    <p class="auth-desc">旅ミッケからログアウトしますか？</p>
+    
+    <div class="button-group">
+        <!-- キャンセルを押すと直前の画面（またはメイン画面）に戻る -->
+        <a href="{% url 'timeline' %}" class="btn-cancel">キャンセル</a>
+        
+        <!-- ログアウト実行＆完了画面へ繋ぐ -->
+        <a href="{% url 'execute_logout' %}" class="btn-logout">ログアウト</a>
+    </div>
+</div>
+{% endblock %}

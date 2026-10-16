@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}ログイン | 旅ミッケ{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* 画面全体のカードデザイン（新規登録画面と統一） */
+    .auth-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; margin: 50px auto; box-sizing: border-box; }
+    .auth-title { margin-top: 0; color: #333; text-align: center; font-size: 24px; margin-bottom: 24px; font-weight: bold; }
+
+    .auth-group { margin-bottom: 20px; }
+    .auth-group label { display: block; font-size: 14px; font-weight: bold; color: #333; margin-bottom: 8px; }
+
+    .input-wrapper { position: relative; display: flex; align-items: center; }
+    .input-wrapper input { width: 100%; padding: 12px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; box-sizing: border-box; transition: border-color 0.2s; }
+    .input-wrapper input:focus { outline: none; border-color: #34A853; box-shadow: 0 0 0 2px rgba(52,168,83,0.2); }
+
+    .toggle-icon { position: absolute; right: 12px; cursor: pointer; font-size: 18px; user-select: none; color: #666; transition: transform 0.1s; }
+    .toggle-icon:active { transform: scale(0.9); }
+
+    .errorlist { color: #EA4335; font-size: 12px; padding-left: 0; list-style: none; margin-top: 5px; margin-bottom: 0; font-weight: bold; }
+
+    /* ログインボタンの色は緑（#34A853）に設定 */
+    .btn-auth { width: 100%; padding: 14px; background-color: #34A853; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
+    .btn-auth:hover { background-color: #2b8b45; }
+
+    .auth-links { text-align: center; margin-top: 24px; font-size: 14px; }
+    .auth-links a { color: #1a73e8; text-decoration: none; font-weight: bold; }
+    .auth-links a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 class="auth-title">ログイン</h2>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <!-- ログイン後にトップページへ戻るための強制命令 -->
+        <input type="hidden" name="next" value="{% url 'timeline' %}">
+
+        {% if form.non_field_errors %}
+            <div style="background: #fce8e6; border: 1px solid #EA4335; padding: 10px; border-radius: 4px; margin-bottom: 15px;">
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        {% for field in form %}
+            <div class="auth-group">
+                <!-- Django(views.py)で設定したラベルをそのまま表示する -->
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+
+                <div class="input-wrapper">
+                    {{ field }}
+                    {% if "password" in field.name %}
+                        <span class="toggle-icon" onclick="togglePassword(this, '{{ field.id_for_label }}')" title="パスワードを表示/非表示">🔒</span>
+                    {% endif %}
+                </div>
+
+                {% if field.errors %}
+                    {{ field.errors }}
+                {% endif %}
+            </div>
+        {% endfor %}
+
+        <button type="submit" class="btn-auth">ログイン</button>
+    </form>
+
+    <!-- パスワードリセットのリンク -->
+    <div class="auth-links" style="margin-top: 15px;">
+        <a href="{% url 'password_reset' %}" style="font-size: 13px; color: #666; font-weight: normal;">パスワードをお忘れですか？</a>
+    </div>
+    
+    <div class="auth-links" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #eee;">
+        アカウントをお持ちでない方は<a href="{% url 'signup' %}">新規登録</a>
+    </div>
+</div>
+
+<script>
+    function togglePassword(icon, inputId) {
+        const inputField = document.getElementById(inputId);
+        if (inputField.type === "password") {
+            inputField.type = "text";
+            icon.innerText = "🔓"; 
+        } else {
+            inputField.type = "password";
+            icon.innerText = "🔒"; 
+        }
+    }
+</script>
+{% endblock %}

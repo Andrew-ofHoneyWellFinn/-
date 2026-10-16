@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <!-- スマホ特有のズームや画面の揺れを防ぐ設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>{% block title %}マッピン{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    {% block extra_head %}{% endblock %}
+
+    <!-- ★ ダークモード共通設定 ★ -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        function toggleGlobalDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.querySelectorAll('.theme-icon').forEach(icon => {
+                icon.innerText = isDark ? '☀️' : '🌙';
+            });
+            if (typeof map !== 'undefined' && typeof darkMapStyle !== 'undefined') {
+                map.setOptions({ styles: isDark ? darkMapStyle : [] });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.querySelectorAll('.theme-icon').forEach(icon => {
+                icon.innerText = isDark ? '☀️' : '🌙';
+            });
+        });
+    </script>
+
+    <style>
+        /* =========================================================
+           スマホアプリライクにするための特殊なCSS
+           ========================================================= */
+        html, body {
+            /* スクロールのバウンス（引っ張り）を無効化 */
+            overscroll-behavior-y: none;
+            -webkit-tap-highlight-color: transparent;
+            /* 100dvh = スマホのアドレスバーの増減を考慮した正確な全画面高さ */
+            height: 100dvh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        /* ダークモード背景 */
+        html.dark body { background-color: #111827; color: #f3f4f6; }
+
+        /* iPhone X以降のホームインジケーター（下部の黒い線）対策の余白 */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        .pt-safe { padding-top: env(safe-area-inset-top); }
+        
+        /* 下部ナビゲーションバーの高さ（64px + セーフエリア） */
+        .nav-bar-height { height: calc(64px + env(safe-area-inset-bottom)); }
+
+        /* 現在開いているタブの色 */
+        .tab-active { color: #2563eb !important; }
+        html.dark .tab-active { color: #60a5fa !important; }
+
+        /* 右下の浮き出る投稿ボタン（＋） */
+        .post-float-button {
+            position: fixed; /* 常に画面の定位置に固定 */
+            /* 下部ナビの高さ + 16pxの余白をあけて配置 */
+            bottom: calc(64px + env(safe-area-inset-bottom) + 16px);
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            transition: transform 0.1s;
+            z-index: 60;
+        }
+        .post-float-button:active {
+            transform: scale(0.9);
+        }
+        html.dark .post-float-button {
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-100 flex flex-col">
+
+    <!-- ==================== 上部ヘッダー ==================== -->
+    <header class="pt-safe shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm z-40 relative">
+        <div class="h-12 px-4 flex items-center justify-between">
+            <!-- ロゴ -->
+            <a href="{% if user.is_authenticated %}{% url 'map' %}{% else %}{% url 'index' %}{% endif %}" class="flex items-center gap-1.5 text-lg font-bold tracking-tight">
+                <span>📍</span>
+                <span>マッピン</span>
+            </a>
+
+            <!-- 右側アクション（テーマ切り替え等） -->
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="toggleGlobalDarkMode()" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition" aria-label="テーマ切り替え">
+                    <span class="theme-icon text-xl">🌙</span>
+                </button>
+                {% if not user.is_authenticated %}
+                    <a href="{% url 'login' %}" class="text-xs font-bold bg-blue-600 text-white px-4 py-1.5 rounded-full shadow-sm">ログイン</a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- ==================== メインコンテンツ ==================== -->
+    <!-- 各ページのコンテンツがここに展開されます。スクロールはこの中だけで発生します。 -->
+    <main class="flex-grow relative overflow-y-auto w-full flex flex-col">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ==================== 右下の投稿（＋）ボタン ==================== -->
+    <button type="button" 
+            onclick="if(typeof openPostModal === 'function'){ openPostModal(); } else if(typeof openSpotModal === 'function'){ openSpotModal(typeof originPos !== 'undefined' ? originPos.lat : 34.6655, typeof originPos !== 'undefined' ? originPos.lng : 133.9180, ''); } else { window.location.href='{% url 'timeline' %}'; }" 
+            class="post-float-button" aria-label="投稿を作成">
+        ＋
+    </button>
+
+    <!-- ==================== 下部ナビゲーションバー（アプリ風5タブ） ==================== -->
+    <nav class="shrink-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-50 nav-bar-height relative">
+        <div class="flex justify-between items-center h-[64px] px-1 pb-safe">
+            
+            <!-- ① マップ -->
+            <a href="{% url 'map' %}" class="flex flex-col items-center justify-center w-1/5 pt-1 text-gray-400 dark:text-gray-500 {% if request.resolver_match.url_name == 'map' %}tab-active{% endif %}">
+                <span class="text-[22px] mb-0.5">🗺️</span>
+                <span class="text-[9px] font-bold">マップ</span>
+            </a>
+
+            <!-- ② 検索（SNSタイムラインで代用） -->
+            <a href="{% url 'timeline' %}" class="flex flex-col items-center justify-center w-1/5 pt-1 text-gray-400 dark:text-gray-500 {% if request.resolver_match.url_name == 'timeline' %}tab-active{% endif %}">
+                <span class="text-[22px] mb-0.5">🔍</span>
+                <span class="text-[9px] font-bold">検索</span>
+            </a>
+
+            <!-- ③ AI相談 -->
+            <a href="{% url 'ai_chat' %}" class="flex flex-col items-center justify-center w-1/5 pt-1 text-gray-400 dark:text-gray-500 {% if request.resolver_match.url_name == 'ai_chat' %}tab-active{% endif %}">
+                <span class="text-[22px] mb-0.5">🤖</span>
+                <span class="text-[9px] font-bold">AI</span>
+            </a>
+
+            <!-- ④ DM（現段階では準備中アラート） -->
+            <a href="#" onclick="alert('DM機能は準備中です')" class="flex flex-col items-center justify-center w-1/5 pt-1 text-gray-400 dark:text-gray-500 transition active:scale-90">
+                <span class="text-[22px] mb-0.5">✉️</span>
+                <span class="text-[9px] font-bold">DM</span>
+            </a>
+
+            <!-- ⑤ アカウント（マイページ） -->
+            {% if user.is_authenticated %}
+            <a href="{% url 'profile' user.username %}" class="flex flex-col items-center justify-center w-1/5 pt-1 text-gray-400 dark:text-gray-500 {% if request.resolver_match.url_name == 'profile' %}tab-active{% endif %}">
+                <span class="text-[22px] mb-0.5">👤</span>
+                <span class="text-[9px] font-bold">アカウント</span>
+            </a>
+            {% else %}
+            <a href="{% url 'login' %}" class="flex flex-col items-center justify-center w-1/5 pt-1 text-gray-400 dark:text-gray-500">
+                <span class="text-[22px] mb-0.5">👤</span>
+                <span class="text-[9px] font-bold">ログイン</span>
+            </a>
+            {% endif %}
+
+        </div>
+    </nav>
+
+</body>
+</html>

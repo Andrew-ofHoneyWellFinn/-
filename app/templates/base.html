@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 各ページのタイトルがここに入る -->
+    <title>{% block title %}旅ミッケ{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 各ページ専用の <style> や <script> がここに入る -->
+    {% block extra_head %}{% endblock %}
+    
+    <!-- ★ ダークモード共通設定 ★ -->
+    <script>
+        // ページ読み込みの最速タイミングでテーマを判定（チラつき防止）
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+
+        // 全画面共通のテーマ切り替え関数
+        function toggleGlobalDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            
+            // 画面内のアイコンを一斉に切り替え
+            document.querySelectorAll('.theme-icon').forEach(icon => {
+                icon.innerText = isDark ? '☀️' : '🌙';
+            });
+
+            // マップ画面を開いている場合は、地図の色も連動して切り替える
+            if (typeof map !== 'undefined' && typeof darkMapStyle !== 'undefined') {
+                map.setOptions({ styles: isDark ? darkMapStyle : [] });
+            }
+        }
+        
+        // ページ表示時にアイコンの表示を正しく合わせる
+        document.addEventListener('DOMContentLoaded', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            document.querySelectorAll('.theme-icon').forEach(icon => {
+                icon.innerText = isDark ? '☀️' : '🌙';
+            });
+        });
+    </script>
+
+    <style>
+        /* アプリ全体の基本となるダーク背景色 */
+        html.dark body { background-color: #111827; color: #f3f4f6; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col text-gray-800">
+
+    <!-- 上部ヘッダー（PC用固定ナビゲーションバー） -->
+    <header class="sticky top-0 z-50 bg-neutral-800 text-white px-6 py-3 flex justify-between items-center shadow-md">
+        <!-- 左側：ロゴボタン（ログイン中はSNS画面、未ログイン時はタイトル画面へ） -->
+        <a href="{% if user.is_authenticated %}{% url 'timeline' %}{% else %}{% url 'index' %}{% endif %}" 
+           class="text-xl font-bold tracking-wide flex items-center gap-2 hover:opacity-80 active:scale-95 transition cursor-pointer">
+            <span>📍</span>
+            <span>旅ミッケ</span>
+        </a>
+
+        <!-- 右側：ナビゲーション＆認証ボタン -->
+        <div class="flex items-center gap-4">
+            {% if user.is_authenticated %}
+                <span class="text-sm text-gray-300 font-medium mr-2">{{ user.username }}さん</span>
+                
+                <!-- SNS画面ボタン -->
+                <a href="{% url 'timeline' %}" 
+                   class="text-sm px-4 py-2 rounded font-medium transition cursor-pointer 
+                          {% if request.resolver_match.url_name == 'timeline' %}bg-blue-600 text-white{% else %}bg-neutral-700 hover:bg-neutral-600 text-gray-100{% endif %}">
+                    🔥 SNS
+                </a>
+                
+                <!-- マップ画面ボタン -->
+                <a href="{% url 'map' %}" 
+                   class="text-sm px-4 py-2 rounded font-medium transition cursor-pointer 
+                          {% if request.resolver_match.url_name == 'map' %}bg-blue-600 text-white{% else %}bg-neutral-700 hover:bg-neutral-600 text-gray-100{% endif %}">
+                    🗺️ マップ
+                </a>
+                
+                <!-- ログアウトボタン -->
+                <a href="{% url 'logout' %}" 
+                   class="text-sm px-4 py-2 border border-gray-500 rounded hover:bg-neutral-700 transition cursor-pointer">
+                    ログアウト
+                </a>
+            {% else %}
+                <!-- 未ログイン時のボタン -->
+                <a href="{% url 'login' %}" 
+                   class="text-sm px-5 py-2 border border-gray-500 rounded hover:bg-neutral-700 transition cursor-pointer">
+                    ログイン
+                </a>
+                <a href="{% url 'signup' %}" 
+                   class="text-sm px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded transition cursor-pointer shadow-sm">
+                    新規登録
+                </a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- メインコンテンツ領域 -->
+    <main class="relative z-0 flex-grow flex flex-col">
+        {% block content %}{% endblock %}
+    </main>
+
+</body>
+</html>

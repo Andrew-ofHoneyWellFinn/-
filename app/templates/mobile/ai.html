@@ -1,0 +1,271 @@
+{% extends 'mobile/base.html' %}
+
+{% block title %}AIと相談 | マッピン{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ==============================================================
+       ★ チャット型AI相談画面の専用CSS ★
+       ============================================================== */
+    /* 背景色をチャットアプリ風にする */
+    html, body { background-color: #f3f4f6; } /* gray-100 */
+    html.dark body { background-color: #111827; }
+
+    /* チャット吹き出し共通 */
+    .chat-bubble {
+        max-width: 85%;
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.5;
+        position: relative;
+        word-wrap: break-word;
+        animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    /* AIの吹き出し（左側） */
+    .chat-bubble-ai {
+        align-self: flex-start;
+        background-color: #ffffff;
+        color: #1f2937;
+        border: 1px solid #e5e7eb;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    
+    /* ユーザーの吹き出し（右側） */
+    .chat-bubble-user {
+        align-self: flex-end;
+        background-color: #3b82f6; /* blue-500 */
+        color: #ffffff;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 1px 2px rgba(59, 130, 246, 0.3);
+    }
+
+    /* クイック質問ボタン（サジェストチップ） */
+    .quick-question {
+        padding: 8px 14px;
+        border: 1px solid #3b82f6;
+        border-radius: 20px;
+        color: #3b82f6;
+        background-color: #ffffff;
+        font-size: 12px;
+        font-weight: bold;
+        white-space: nowrap;
+        transition: all 0.2s;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .quick-question:active {
+        background-color: #3b82f6;
+        color: #ffffff;
+    }
+
+    /* 入力エリア（画面下部に固定） */
+    .chat-input-area {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: #ffffff;
+        border-top: 1px solid #e5e7eb;
+        padding: 10px 16px env(safe-area-inset-bottom);
+        z-index: 20;
+    }
+
+    /* AIの提案結果用カード */
+    .ai-result-card {
+        background: linear-gradient(to bottom right, #ffffff, #f8fafc);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    @keyframes popIn {
+        from { opacity: 0; transform: translateY(10px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ダークモード設定 */
+    html.dark .chat-bubble-ai { background-color: #1f2937; color: #f3f4f6; border-color: #374151; }
+    html.dark .quick-question { background-color: #1f2937; border-color: #60a5fa; color: #60a5fa; }
+    html.dark .chat-input-area { background-color: #1f2937; border-color: #374151; }
+    html.dark .ai-result-card { background: #1f2937; border-color: #374151; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full relative bg-gray-50 dark:bg-gray-900">
+    
+    <!-- 上部ヘッダー -->
+    <div class="px-4 py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 shrink-0 z-10 shadow-sm">
+        <a href="javascript:history.back()" class="text-xl text-gray-800 dark:text-gray-200 p-1">←</a>
+        <div>
+            <h1 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <span>🤖</span> AI相談
+            </h1>
+        </div>
+    </div>
+
+    <!-- チャットログエリア -->
+    <!-- 下部に入力エリアがあるため、padding-bottomを大きく取って隠れないようにする -->
+    <div id="chatContainer" class="flex-grow overflow-y-auto px-4 pt-6 pb-40 flex flex-col gap-5">
+        
+        <!-- 最初のAIの挨拶 -->
+        <div class="flex gap-2">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm shrink-0 shadow-sm mt-1">
+                🤖
+            </div>
+            <div class="chat-bubble chat-bubble-ai">
+                こんにちは！「マッピン」のAIコンシェルジュです。<br><br>
+                みんなのリアルタイムな投稿データの中から、いまの気分や状況にピッタリのスポットをご提案します。<br>
+                「海が見える静かな場所」「今から30分で行けるカフェ」など、自由に話しかけてみてください✨
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 入力エリア（下部固定） -->
+    <div class="chat-input-area">
+        <!-- クイック質問（サジェスト） -->
+        <div id="quickQuestions" class="flex overflow-x-auto no-scrollbar gap-2 mb-3 pb-1">
+            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('静かな穴場でゆっくりしたい')">🤫 静かな穴場でゆっくりしたい</button>
+            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('絶景を見て癒やされたい')">🏞️ 絶景を見て癒やされたい</button>
+            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('美味しいスイーツが食べたい')">🍰 美味しいスイーツが食べたい</button>
+            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('今からサクッと1時間で行ける場所')">⏱ サクッと1時間で行ける場所</button>
+        </div>
+
+        <!-- フォーム -->
+        <form id="chatForm" onsubmit="submitChat(event)" class="flex gap-2">
+            <input type="text" id="chatInput" autocomplete="off" placeholder="AIに相談する..." required
+                   class="flex-grow bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 dark:text-white transition">
+            <button type="submit" id="sendBtn" class="w-10 h-10 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                <!-- 送信アイコン（紙飛行機） -->
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </form>
+    </div>
+
+</div>
+
+<!-- CSRFトークン（API送信用） -->
+{% csrf_token %}
+
+<script>
+    const chatContainer = document.getElementById('chatContainer');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const quickQuestions = document.getElementById('quickQuestions');
+
+    // 常に最新のメッセージが見えるように一番下へスクロールする関数
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    // ユーザーのメッセージを画面に追加する関数
+    function appendUserMessage(text) {
+        const div = document.createElement('div');
+        div.className = 'chat-bubble chat-bubble-user';
+        div.innerText = text;
+        chatContainer.appendChild(div);
+        scrollToBottom();
+    }
+
+    // AIのメッセージ（ローディング中）を画面に追加し、その要素を返す関数
+    function appendAILoading() {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex gap-2';
+        
+        const icon = document.createElement('div');
+        icon.className = 'w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm shrink-0 shadow-sm mt-1';
+        icon.innerText = '🤖';
+
+        const bubble = document.createElement('div');
+        bubble.className = 'chat-bubble chat-bubble-ai';
+        bubble.innerHTML = '<span class="animate-pulse">考え中... ⏳</span>';
+
+        wrapper.appendChild(icon);
+        wrapper.appendChild(bubble);
+        chatContainer.appendChild(wrapper);
+        scrollToBottom();
+        
+        return bubble; // 後で中身を書き換えるために返す
+    }
+
+    // クイック質問ボタンを押した時の処理
+    function sendQuickQuestion(text) {
+        chatInput.value = text;
+        quickQuestions.style.display = 'none'; // 質問後はサジェストを隠す
+        document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+    }
+
+    // フォーム送信時のメイン処理
+    async function submitChat(event) {
+        event.preventDefault();
+        
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        // UIの更新（ユーザーの発言を表示し、入力をロック）
+        appendUserMessage(text);
+        chatInput.value = '';
+        chatInput.blur(); // キーボードを閉じる
+        sendBtn.disabled = true;
+        chatInput.disabled = true;
+        quickQuestions.style.display = 'none';
+
+        // AIのローディング表示
+        const aiBubble = appendAILoading();
+
+        try {
+            // 既存の ai_suggest_view APIへ送信
+            // ※既存APIは「移動手段」「所要時間」などを分けて受け取る仕様のため、すべて「free_text」に突っ込んで解析させます
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const response = await fetch('/api/ai_suggest/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    mobility: 'すべて',
+                    duration: '指定なし',
+                    companion: '指定なし',
+                    mood: '指定なし',
+                    free_text: text // チャットの自由入力をここに渡す
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                // 返ってきたHTMLをAIの吹き出しにセット
+                // AIの結果は見やすいように専用のカードデザインでラップする
+                aiBubble.innerHTML = `
+                    今日ならここがおすすめです！✨
+                    <div class="ai-result-card p-3 mt-2 text-sm text-gray-800 dark:text-gray-200">
+                        ${data.answer_html}
+                    </div>
+                `;
+            } else {
+                aiBubble.innerHTML = '申し訳ありません、エラーが発生しました。もう一度お試しください。';
+            }
+            
+        } catch (error) {
+            aiBubble.innerHTML = '通信に失敗しました。電波の良いところで再度お試しください。';
+        } finally {
+            // ロック解除
+            sendBtn.disabled = false;
+            chatInput.disabled = false;
+            scrollToBottom();
+        }
+    }
+
+    // マップへのジャンプ処理（APIから返ってくるボタン用）
+    function jumpToSpotOnMap(lat, lng, spotId) {
+        // AI画面からは、マップ画面へURLパラメータ付きで遷移させる
+        window.location.href = `/map/?lat=${lat}&lng=${lng}&spot=${spotId}`;
+    }
+</script>
+{% endblock %}

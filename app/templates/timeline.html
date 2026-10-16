@@ -1,0 +1,650 @@
+{% extends 'base.html' %}
+
+{% block title %}ホーム / SNS | 旅ミッケ{% endblock %}
+
+{% block extra_head %}
+<style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* X風のタブ下線インジケーター */
+    .feed-tab {
+        position: relative;
+        color: #6b7280;
+        font-weight: 500;
+        background-color: transparent;
+    }
+    .feed-tab.active {
+        color: #111827;
+        font-weight: 700;
+    }
+    .feed-tab.active::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 4px;
+        background-color: #1a73e8;
+        border-radius: 9999px;
+    }
+
+    /* アクティブな左メニュー */
+    .nav-active {
+        background-color: #e8f0fe;
+        color: #1a73e8;
+        font-weight: bold;
+    }
+
+    /* ==============================================================
+       ★ SNS画面（タイムライン）用のダークモード一括変換 ★
+       ============================================================== */
+    html.dark body { background-color: #111827 !important; color: #f3f4f6 !important; }
+    html.dark .bg-white { background-color: #1f2937 !important; border-color: #374151 !important; }
+    html.dark .text-gray-900, html.dark .text-gray-800 { color: #f3f4f6 !important; }
+    html.dark .text-gray-700, html.dark .text-gray-600, html.dark .text-gray-500 { color: #9ca3af !important; }
+    html.dark .bg-gray-50, html.dark .bg-gray-100 { background-color: #374151 !important; color: #f3f4f6 !important; }
+    html.dark .border-gray-100, html.dark .border-gray-200, html.dark .border-gray-300 { border-color: #374151 !important; }
+    
+    html.dark input[type="text"], html.dark select, html.dark textarea { 
+        background-color: #374151 !important; color: #f3f4f6 !important; border-color: #4b5563 !important; 
+    }
+    html.dark input::placeholder, html.dark textarea::placeholder { color: #9ca3af !important; }
+    
+    html.dark .sticky.top-[52px] { background-color: rgba(31, 41, 55, 0.95) !important; border-color: #374151 !important; }
+    html.dark .feed-tab { color: #9ca3af !important; background-color: transparent !important; }
+    html.dark .feed-tab.active { color: #f3f4f6 !important; }
+    html.dark .feed-tab:hover { background-color: #374151 !important; }
+
+    html.dark .nav-active { background-color: #374151 !important; color: #60a5fa !important; }
+    html.dark aside a:hover, html.dark aside button:hover { background-color: #374151 !important; }
+    
+    html.dark .post-card { background-color: transparent !important; }
+    html.dark .post-card:hover { background-color: #374151 !important; }
+    html.dark article.hover\:bg-gray-50\/70:hover { background-color: #374151 !important; }
+
+    html.dark .bg-blue-50 { background-color: #1e3a8a !important; color: #bfdbfe !important; border-color: #1e3a8a !important; }
+    html.dark .text-blue-700 { color: #bfdbfe !important; }
+    html.dark .bg-teal-50 { background-color: #064e3b !important; color: #6ee7b7 !important; border-color: #064e3b !important;}
+    html.dark .text-teal-700 { color: #6ee7b7 !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- 3カラム全体コンテナ -->
+<div class="max-w-7xl w-full mx-auto flex-grow grid grid-cols-12 gap-6 px-4">
+
+    <!-- ==================== 左サイドバー（ナビ＆フィルタ＆アクションボタン） ==================== -->
+    <!-- ★ 修正：PC専用なので、hidden md:block のようなクラスを削除しました -->
+    <aside class="col-span-3 py-4">
+        <div class="sticky top-16 space-y-5">
+            
+            <!-- メインメニュー -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-1">
+                <p class="px-3 py-1 text-xs font-bold text-gray-400">メニュー</p>
+                <a href="{% url 'timeline' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg nav-active transition">
+                    <span class="text-lg">🏠</span>
+                    <span>ホーム（タイムライン）</span>
+                </a>
+                <a href="{% url 'map' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                    <span class="text-lg">🗺️</span>
+                    <span>リアルタイム地図</span>
+                </a>
+                <button onclick="openAiModal()" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-indigo-50 hover:text-indigo-700 font-medium transition text-left cursor-pointer">
+                    <span class="text-lg">🤖</span>
+                    <span>AIお出かけ相談</span>
+                </button>
+                {% if user.is_authenticated %}
+                <a href="{% url 'profile' user.username %}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                    <span class="text-lg">👤</span>
+                    <span>プロフィール</span>
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- 移動手段フィルタ -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-3 space-y-1">
+                <p class="px-3 py-1 text-xs font-bold text-gray-400">移動手段で絞り込む</p>
+                <button onclick="filterMobility('all', this)" class="mobility-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm nav-active transition cursor-pointer">
+                    <span>🌐 すべての移動手段</span>
+                </button>
+                <button onclick="filterMobility('car', this)" class="mobility-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition cursor-pointer">
+                    <span>🚗 車・ドライブ</span>
+                    <span class="text-xs text-gray-400">駐車場・道幅</span>
+                </button>
+                <button onclick="filterMobility('bicycle', this)" class="mobility-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition cursor-pointer">
+                    <span>🚲 自転車・サイクリング</span>
+                    <span class="text-xs text-gray-400">坂道・ラック</span>
+                </button>
+                <button onclick="filterMobility('walk', this)" class="mobility-btn w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 transition cursor-pointer">
+                    <span>🚶 徒歩・お散歩</span>
+                    <span class="text-xs text-gray-400">駅チカ・歩道</span>
+                </button>
+            </div>
+
+            <!-- アクションボタン群 -->
+            <div class="space-y-2.5">
+                <button onclick="openPostModal()" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-full shadow-md transition flex items-center justify-center gap-2 cursor-pointer">
+                    <span>🖊️</span>
+                    <span>スポット・状況を投稿する</span>
+                </button>
+                <button onclick="openAiModal()" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 active:scale-95 text-white font-bold rounded-full shadow-sm transition flex items-center justify-center gap-2 cursor-pointer text-sm">
+                    <span>✨</span>
+                    <span>AIに行き先を提案してもらう</span>
+                </button>
+                <button type="button" onclick="toggleGlobalDarkMode()" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition cursor-pointer text-xl" title="テーマ切り替え">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==================== 中央メインカラム ==================== -->
+    <section class="col-span-6 bg-white border-x border-gray-200 min-h-screen">
+        
+        <!-- 上部2タブ -->
+        <div class="sticky top-[52px] z-20 bg-white/95 backdrop-blur border-b border-gray-200">
+            <div class="grid grid-cols-2 text-sm text-center">
+                <button onclick="switchFeedTab('timeline', this)" class="feed-tab active py-4 hover:bg-gray-50 transition cursor-pointer">
+                    タイムライン
+                </button>
+                <button onclick="switchFeedTab('following', this)" class="feed-tab py-4 hover:bg-gray-50 transition cursor-pointer">
+                    フォロー中
+                </button>
+            </div>
+            <!-- ★ 修正：スマホ用の横スクロールタブを完全に削除しました -->
+        </div>
+
+        <!-- タイムライン（投稿カード一覧） -->
+        <div id="timeline-list" class="divide-y divide-gray-200">
+            {% for post in posts %}
+            <article class="post-card p-4 hover:bg-gray-50/70 transition" 
+                     data-mobility="{{ post.mobility }}" 
+                     data-following="{{ post.is_following|yesno:'true,false' }}">
+                
+                <div class="flex gap-3">
+                    <a href="{% url 'profile' post.user.username|default:'guest' %}" title="@{{ post.user.username }}のプロフィールを見る" 
+                       class="w-10 h-10 rounded-full bg-neutral-700 hover:bg-blue-600 text-white font-bold flex items-center justify-center shrink-0 transition shadow-xs">
+                        {{ post.user_initial }}
+                    </a>
+
+                    <div class="flex-grow min-w-0">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2 truncate">
+                                <a href="{% url 'profile' post.user.username|default:'guest' %}" class="font-bold text-sm text-gray-900 hover:underline">
+                                    @{{ post.user.username|default:"ゲスト" }}
+                                </a>
+                                <span class="text-xs text-gray-400">・{{ post.created_at|date:"n月j日 H:i" }}</span>
+
+                                <!-- 自分の投稿以外にのみ、フォローボタンを表示 -->
+                                {% if user.is_authenticated and post.user != user %}
+                                <button onclick="togglePostFollow(this, '{{ post.user.username }}')" 
+                                        class="text-[11px] px-2 py-0.5 rounded-full font-bold transition cursor-pointer 
+                                               {% if post.is_following %}
+                                               bg-white text-gray-800 border border-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:bg-transparent dark:text-gray-300 dark:border-gray-600 dark:hover:text-red-500 dark:hover:border-red-800 dark:hover:bg-red-900/30
+                                               {% else %}
+                                               bg-neutral-900 text-white border border-neutral-900 hover:bg-neutral-700 dark:bg-gray-100 dark:text-gray-900 dark:border-gray-100 dark:hover:bg-gray-300
+                                               {% endif %}">
+                                    {% if post.is_following %}フォロー中{% else %}＋ フォローする{% endif %}
+                                </button>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="text-right shrink-0">
+                                {% if post.is_expired %}
+                                    <span class="inline-block px-2 py-1 text-[10px] font-bold rounded bg-gray-800 text-white">期限切れ・過去の情報</span>
+                                {% elif post.freshness %}
+                                    <span class="inline-block px-2 py-1 text-[10px] font-bold rounded border {{ post.freshness_color }}">
+                                        {{ post.freshness }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <a href="{% url 'map' %}?lat={{ post.latitude }}&lng={{ post.longitude }}&spot={{ post.id }}" 
+                           class="inline-flex items-center gap-1 mt-1 text-sm font-bold text-blue-600 hover:underline">
+                            <span>📍 {{ post.spot_name }}</span>
+                        </a>
+
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            <span class="text-xs px-2 py-0.5 rounded font-medium bg-neutral-800 text-white">
+                                {{ post.mobility_label }}
+                            </span>
+                            <span class="text-xs px-2 py-0.5 rounded font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                                {{ post.category_label }}
+                            </span>
+                            {% for tag in post.sub_tags %}
+                            <span class="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-700">
+                                #{{ tag }}
+                            </span>
+                            {% endfor %}
+                        </div>
+
+                        <p class="text-sm text-gray-800 mt-2.5 leading-relaxed whitespace-pre-line">{{ post.content }}</p>
+
+                        {% if post.first_image_url %}
+                        <div class="mt-3 rounded-xl overflow-hidden border border-gray-200 max-h-72">
+                            <img src="{{ post.first_image_url }}" alt="{{ post.spot_name }}" class="w-full h-full object-cover">
+                        </div>
+                        {% endif %}
+
+                        <div class="flex items-center justify-between mt-3 pt-2 text-xs text-gray-500">
+                            <div class="flex gap-4">
+                                <button class="flex items-center gap-1.5 hover:text-blue-600 transition cursor-pointer">
+                                    <span>💬</span><span>{{ post.comments }}</span>
+                                </button>
+                                <button onclick="toggleCount(this)" class="flex items-center gap-1.5 hover:text-pink-600 transition cursor-pointer">
+                                    <span>❤️</span><span class="count-num">{{ post.likes }}</span>
+                                </button>
+                                <button onclick="toggleCount(this)" class="flex items-center gap-1.5 hover:text-amber-600 font-medium transition cursor-pointer">
+                                    <span>🔖 行ってみたい</span><span class="count-num">{{ post.wants }}</span>
+                                </button>
+                            </div>
+
+                            <a href="{% url 'map' %}?lat={{ post.latitude }}&lng={{ post.longitude }}&spot={{ post.id }}" 
+                               class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 font-bold hover:bg-blue-100 transition border border-blue-200">
+                                <span>🗺️ 地図で見る</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% empty %}
+            <div class="p-12 text-center text-gray-500 text-sm">
+                投稿がまだありません。最初の投稿をしてみましょう！
+            </div>
+            {% endfor %}
+
+            <div id="empty-following-msg" class="hidden p-12 text-center text-gray-500 text-sm">
+                フォロー中のユーザーの投稿がまだありません。<br>
+                「タイムライン」タブから気になるユーザーをフォローしてみましょう！
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== 右サイドバー（検索 ＆ トレンドに集中） ==================== -->
+    <!-- ★ 修正：PC専用なので、hidden lg:block のようなクラスを削除しました -->
+    <aside class="col-span-3 py-4 space-y-5">
+        <div class="sticky top-16 space-y-5">
+
+            <div class="bg-white rounded-full shadow-sm border border-gray-300 px-4 py-2.5 flex items-center gap-2 focus-within:border-blue-500">
+                <span class="text-gray-400">🔍</span>
+                <input type="text" id="search-input" onkeyup="searchPosts()" placeholder="キーワード・季節ものを検索" class="w-full text-sm focus:outline-none">
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-gray-900">🔥 いまホットなトレンド</h3>
+                    <span class="text-[11px] text-teal-600 font-bold">リアルタイム集計</span>
+                </div>
+                <div class="divide-y divide-gray-100">
+                    {% for item in trends %}
+                    <button onclick="filterByKeyword('{{ item.tag|cut:'#' }}')" class="w-full text-left px-4 py-3 hover:bg-gray-50 transition block cursor-pointer">
+                        <div class="flex justify-between text-[11px] text-gray-400">
+                            <span>{{ item.rank }}位 ・ {{ item.category }}</span>
+                            <span>📈 急上昇</span>
+                        </div>
+                        <p class="font-bold text-sm text-gray-800 mt-0.5">{{ item.tag }}</p>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ item.count }}</p>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+        </div>
+    </aside>
+</div>
+
+<!-- ★ 修正：スマホ用フローティングボタンを削除しました -->
+
+<!-- ==================== ★ 投稿モーダル等の各種ポップアップ ★ ==================== -->
+<!-- 投稿モーダル -->
+<div id="post-modal" onclick="closeModalOnBg(event, 'post-modal')" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-start justify-center pt-16 px-4">
+    <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+        <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            <button type="button" onclick="closePostModal()" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 font-bold text-lg cursor-pointer">✕</button>
+            <span class="text-sm font-bold text-gray-800">スポット・リアルタイム状況を投稿</span>
+            <div class="w-8"></div>
+        </div>
+        <form method="post" action="{% url 'map' %}" enctype="multipart/form-data" class="p-4 max-h-[80vh] overflow-y-auto">
+            {% csrf_token %}
+            <input type="hidden" name="lat" value="34.6655">
+            <input type="hidden" name="lng" value="133.9180">
+            <div class="flex gap-3">
+                <div class="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shrink-0">
+                    {% if user.is_authenticated %}{{ user.username|slice:":1"|upper }}{% else %}G{% endif %}
+                </div>
+                <div class="flex-grow space-y-4">
+                    <div class="space-y-1.5">
+                        <div class="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 focus-within:bg-white focus-within:border-blue-500 transition">
+                            <span>📍</span>
+                            <input type="text" id="spotNameInput" name="spot_name" list="spot-history-list" required placeholder="スポット名・場所を入力（または下から選ぶ）" class="w-full text-sm bg-transparent focus:outline-none">
+                            <datalist id="spot-history-list">
+                                {% for history in spot_history %}
+                                    <option value="{{ history }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        {% if spot_history %}
+                        <div class="flex flex-wrap gap-1.5 items-center pl-1">
+                            <span class="text-[10px] text-gray-500 font-bold">🕒 履歴:</span>
+                            {% for history in spot_history|slice:":5" %}
+                            <button type="button" onclick="document.getElementById('spotNameInput').value='{{ history|escapejs }}'" class="text-[10px] px-2 py-0.5 rounded-full border border-gray-300 bg-white text-gray-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 transition cursor-pointer">{{ history }}</button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <textarea name="content" rows="3" required placeholder="いま現地の様子はどうですか？（景観の見頃、駐車場の停めやすさなど）" class="w-full p-3 text-sm bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none"></textarea>
+                    <div class="flex gap-2 text-xs">
+                        <select name="mobility" class="px-3 py-2 border border-gray-300 rounded-md bg-white w-1/2">
+                            <option value="car">🚗 車向け情報</option>
+                            <option value="bicycle">🚲 自転車向け情報</option>
+                            <option value="walk">🚶 徒歩向け情報</option>
+                        </select>
+                        <select name="category" class="px-3 py-2 border border-gray-300 rounded-md bg-white w-1/2">
+                            <option value="scenery">🍁 現在の景観（中期データ）</option>
+                            <option value="road">🛣️ 道路・混雑状況（短期データ）</option>
+                            <option value="local">📍 地域のみどころ（長期データ）</option>
+                        </select>
+                    </div>
+                    <div class="mt-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">現地の写真・画像（最大4枚まで）</label>
+                        <input type="file" id="imageInput" name="images" multiple accept="image/*" onchange="handleImageSelect(event)" class="w-full text-xs text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:bg-blue-50 file:text-blue-700 cursor-pointer hover:file:bg-blue-100 transition">
+                        <div id="imagePreviewContainer" class="grid grid-cols-2 gap-2 mt-2"></div>
+                    </div>
+                    <div class="mt-2">
+                        <label class="block text-xs font-bold text-gray-700 mb-1">タグ（特徴）</label>
+                        <div id="tagContainer" class="flex flex-wrap gap-1.5 pt-1 text-xs">
+                            <label class="cursor-pointer"><input type="checkbox" name="sub_tags" value="駐車場が広い" class="peer hidden"><span class="px-2.5 py-1 rounded-full border border-gray-300 bg-white text-gray-600 peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 peer-checked:font-bold transition inline-block">＋ 🅿️ 駐車場が広い</span></label>
+                            <label class="cursor-pointer"><input type="checkbox" name="sub_tags" value="季節もの・限定" class="peer hidden"><span class="px-2.5 py-1 rounded-full border border-gray-300 bg-white text-gray-600 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 peer-checked:font-bold transition inline-block">＋ 🍁 季節もの・限定</span></label>
+                        </div>
+                        <div class="mt-2 flex gap-2">
+                            <input type="text" id="customTagInput" placeholder="自由なタグを追加（例: 夜景が綺麗）" class="text-xs px-3 py-1.5 border border-gray-300 rounded focus:outline-none focus:border-blue-500 flex-grow">
+                            <button type="button" onclick="addCustomTag()" class="text-xs font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded transition">追加</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 pt-4 border-t border-gray-100">
+                        <button type="button" onclick="closePostModal()" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-sm rounded-full transition">キャンセル</button>
+                        <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-full shadow-md transition cursor-pointer">投稿する</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- AIお出かけコンシェルジュ モーダル -->
+<div id="aiModal" onclick="closeModalOnBg(event, 'aiModal')" class="hidden fixed inset-0 z-[9999] bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-gray-200 overflow-hidden animate-fade-in">
+        <div class="px-5 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-700 text-white flex items-center justify-between">
+            <h3 class="font-bold text-base flex items-center gap-2"><span>🤖</span><span>AIお出かけコンシェルジュ</span></h3>
+            <button type="button" onclick="closeAiModal()" class="w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center text-white font-bold cursor-pointer transition">✕</button>
+        </div>
+        <div class="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
+            <p class="text-xs text-gray-600 mb-2 leading-relaxed">今の気分や条件を選ぶだけで、AIがみんなの投稿の中からピッタリの行き先を提案します！</p>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">🚗 移動手段</label>
+                <select id="aiMobility" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                    <option value="car">🚗 車・ドライブ</option>
+                    <option value="bicycle">🚲 自転車・サイクリング</option>
+                    <option value="walk">🚶 徒歩・お散歩</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">⏱ 所要時間</label>
+                    <select id="aiDuration" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                        <option value="サクッと1〜2時間">サクッと1〜2時間</option>
+                        <option value="半日くらい">半日くらい</option>
+                        <option value="1日たっぷり">1日たっぷり</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">👥 誰と行く？</label>
+                    <select id="aiCompanion" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                        <option value="1人で">👤 1人で</option>
+                        <option value="友達と">👥 友達と</option>
+                        <option value="恋人・夫婦で">💑 恋人・夫婦で</option>
+                        <option value="家族・子供と">👨‍👩‍👧‍👦 家族・子供と</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">✨ 今の気分・目的</label>
+                <select id="aiMood" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white">
+                    <option value="絶景を見て癒やされたい">🏞️ 絶景を見て癒やされたい</option>
+                    <option value="美味しいスイーツやご飯が食べたい">🍰 美味しいものが食べたい</option>
+                    <option value="静かな穴場でゆっくりしたい">🤫 静かな穴場でゆっくりしたい</option>
+                    <option value="季節感（花や紅葉）を楽しみたい">🍁 季節感を楽しみたい</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 mb-1">🖊️ 自由入力（任意）</label>
+                <textarea id="aiFreeText" rows="2" placeholder="例：駐車場が広いカフェ、海が見えるベンチ" class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+            </div>
+            <div id="aiResultArea" class="hidden mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-lg text-sm text-gray-800 leading-relaxed"></div>
+            <div class="flex justify-end pt-2">
+                <button type="button" onclick="submitAiSuggest()" id="aiSubmitBtn" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold text-sm rounded-lg shadow-md transition cursor-pointer flex items-center justify-center gap-2">
+                    <span>✨ この条件で提案してもらう</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- フロントエンド動作用スクリプト -->
+<script>
+    // CSRFトークン取得
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    let currentFeedTab = 'timeline';
+    let currentMobility = 'all';
+
+    function openPostModal() { document.getElementById('post-modal').classList.remove('hidden'); }
+    function closePostModal() { document.getElementById('post-modal').classList.add('hidden'); }
+    function openAiModal() {
+        document.getElementById('aiResultArea').classList.add('hidden');
+        document.getElementById('aiResultArea').innerHTML = '';
+        document.getElementById('aiModal').classList.remove('hidden');
+    }
+    function closeAiModal() { document.getElementById('aiModal').classList.add('hidden'); }
+
+    function closeModalOnBg(event, modalId) {
+        if (event.target.id === modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+    }
+
+    // ★ フォローボタンのAPI処理
+    async function togglePostFollow(btn, targetUsername) {
+        btn.disabled = true;
+        try {
+            const response = await fetch(`/api/toggle_follow/${targetUsername}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const data = await response.json();
+            
+            if (data.status === 'ok') {
+                const card = btn.closest('.post-card');
+                if (data.is_following) {
+                    btn.innerText = 'フォロー中';
+                    btn.className = 'text-[11px] px-2 py-0.5 rounded-full font-bold transition cursor-pointer bg-white text-gray-800 border border-gray-300 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:bg-transparent dark:text-gray-300 dark:border-gray-600 dark:hover:text-red-500 dark:hover:border-red-800 dark:hover:bg-red-900/30';
+                    card.dataset.following = 'true';
+                } else {
+                    btn.innerText = '＋ フォローする';
+                    btn.className = 'text-[11px] px-2 py-0.5 rounded-full font-bold transition cursor-pointer bg-neutral-900 text-white border border-neutral-900 hover:bg-neutral-700 dark:bg-gray-100 dark:text-gray-900 dark:border-gray-100 dark:hover:bg-gray-300';
+                    card.dataset.following = 'false';
+                }
+                applyFilters();
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            alert('通信エラーが発生しました。');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function switchFeedTab(tabType, btn) {
+        currentFeedTab = tabType;
+        document.querySelectorAll('.feed-tab').forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+        applyFilters();
+    }
+
+    function filterMobility(mobility, btn) {
+        currentMobility = mobility;
+        document.querySelectorAll('.mobility-btn').forEach(el => el.classList.remove('nav-active'));
+        btn.classList.add('nav-active');
+        applyFilters();
+    }
+
+    function applyFilters() {
+        let visibleCount = 0;
+        document.querySelectorAll('.post-card').forEach(card => {
+            const matchFeed = (currentFeedTab === 'timeline' || card.dataset.following === 'true');
+            const matchMob = (currentMobility === 'all' || card.dataset.mobility === currentMobility);
+            if (matchFeed && matchMob) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        document.getElementById('empty-following-msg').classList.toggle('hidden', visibleCount > 0);
+    }
+
+    function searchPosts() {
+        const q = document.getElementById('search-input').value.toLowerCase();
+        document.querySelectorAll('.post-card').forEach(card => {
+            card.style.display = card.innerText.toLowerCase().includes(q) ? 'block' : 'none';
+        });
+    }
+    function filterByKeyword(word) {
+        const input = document.getElementById('search-input');
+        input.value = word;
+        searchPosts();
+    }
+
+    function toggleCount(btn) {
+        const numSpan = btn.querySelector('.count-num');
+        let count = parseInt(numSpan.innerText, 10);
+        if (btn.dataset.liked === 'true') {
+            numSpan.innerText = count - 1;
+            btn.dataset.liked = 'false';
+            btn.classList.remove('font-bold', 'text-pink-600');
+        } else {
+            numSpan.innerText = count + 1;
+            btn.dataset.liked = 'true';
+            btn.classList.add('font-bold', 'text-pink-600');
+        }
+    }
+
+    let selectedFiles = [];
+    const maxFiles = 4;
+    function handleImageSelect(event) {
+        const files = Array.from(event.target.files);
+        if (selectedFiles.length + files.length > maxFiles) {
+            alert(`写真は最大${maxFiles}枚までです。`);
+            return;
+        }
+        files.forEach(file => selectedFiles.push(file));
+        updateImagePreview();
+        updateFileInput();
+    }
+    function updateImagePreview() {
+        const container = document.getElementById('imagePreviewContainer');
+        container.innerHTML = '';
+        selectedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const div = document.createElement('div');
+                div.className = 'relative rounded-lg overflow-hidden border border-gray-200 h-24';
+                div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover"><button type="button" onclick="removeImage(${index})" class="absolute top-1 right-1 bg-black/60 hover:bg-black text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition">✕</button>`;
+                container.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    function removeImage(index) {
+        selectedFiles.splice(index, 1);
+        updateImagePreview();
+        updateFileInput();
+    }
+    function updateFileInput() {
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        document.getElementById('imageInput').files = dt.files;
+    }
+    function addCustomTag() {
+        const input = document.getElementById('customTagInput');
+        const val = input.value.trim();
+        if (!val) return;
+        const container = document.getElementById('tagContainer');
+        const label = document.createElement('label');
+        label.className = 'cursor-pointer animate-fade-in';
+        label.innerHTML = `<input type="checkbox" name="sub_tags" value="${val}" class="peer hidden" checked><span class="px-2.5 py-1 rounded-full border border-blue-500 bg-blue-50 text-blue-700 font-bold transition inline-block">✓ ${val}</span>`;
+        container.appendChild(label);
+        input.value = ''; 
+    }
+
+    async function submitAiSuggest() {
+        const btn = document.getElementById('aiSubmitBtn');
+        const resultArea = document.getElementById('aiResultArea');
+        const mobility = document.getElementById('aiMobility').options[document.getElementById('aiMobility').selectedIndex].text;
+        const duration = document.getElementById('aiDuration').options[document.getElementById('aiDuration').selectedIndex].text;
+        const companion = document.getElementById('aiCompanion').options[document.getElementById('aiCompanion').selectedIndex].text;
+        const mood = document.getElementById('aiMood').options[document.getElementById('aiMood').selectedIndex].text;
+        const freeText = document.getElementById('aiFreeText').value;
+
+        btn.disabled = true;
+        btn.innerHTML = `<span class="animate-pulse">⏳ AIがみんなの投稿を検索し、考え中...</span>`;
+        resultArea.classList.add('hidden');
+
+        try {
+            const response = await fetch("{% url 'ai_suggest' %}", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie("csrftoken")
+                },
+                body: JSON.stringify({ mobility, duration, companion, mood, free_text: freeText })
+            });
+
+            const data = await response.json();
+            btn.disabled = false;
+            btn.innerHTML = `<span>✨ 別の条件で提案してもらう</span>`;
+
+            if (data.status === 'ok') {
+                resultArea.innerHTML = `<div class="font-bold text-indigo-700 mb-3 border-b border-indigo-200 pb-2">🤖 AIコンシェルジュからの提案：</div><div class="space-y-2">${data.answer_html}</div>`;
+                resultArea.classList.remove('hidden');
+            } else {
+                alert("エラー: " + data.message);
+            }
+        } catch (error) {
+            btn.disabled = false;
+            btn.innerHTML = `<span>✨ もう一度提案してもらう</span>`;
+            alert("通信に失敗しました。ネットワークを確認してください。");
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="flex-grow flex flex-col items-center justify-center px-4 text-center">
+    <!-- メインタイトル -->
+    <h1 class="text-4xl sm:text-5xl font-bold text-neutral-800 tracking-wider mb-6">
+        マッピン
+    </h1>
+
+    <!-- サブコピー（旅ミッケの企画内容に合わせて変更） -->
+    <p class="text-gray-600 text-sm sm:text-base max-w-lg leading-relaxed mb-10">
+        リアルタイムな地域・景観・道路情報とAI相談で、<br class="hidden sm:inline">
+        徒歩・自転車・車すべての人にぴったりのお出かけ先を提案します。
+    </p>
+
+    <!-- アクションボタン（参考画像の青塗りボタン＆緑枠ボタンを再現） -->
+    <div class="flex flex-wrap justify-center gap-5">
+        <a href="{% url 'signup' %}" class="w-44 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-full shadow-sm transition">
+            新規登録
+        </a>
+        <a href="{% url 'login' %}" class="w-44 py-3.5 bg-white hover:bg-green-50 text-green-600 font-bold border-2 border-green-600 rounded-full shadow-sm transition">
+            ログイン
+        </a>
+    </div>
+</div>
+{% endblock %}

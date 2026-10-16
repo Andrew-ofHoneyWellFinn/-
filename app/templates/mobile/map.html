@@ -1,0 +1,551 @@
+{% extends 'mobile/base.html' %}
+
+{% block title %}マップ | 旅ミッケ{% endblock %}
+
+{% block extra_head %}
+<style>
+    main { overflow: hidden !important; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .filter-btn {
+        background-color: rgba(255, 255, 255, 0.95);
+        color: #4b5563;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s;
+    }
+    .filter-btn.active {
+        background-color: #1a73e8;
+        color: white;
+        border-color: #1a73e8;
+    }
+
+    .spot-custom-label {
+        display: inline-block;
+        background-color: rgba(255, 255, 255, 0.95);
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: bold;
+        color: #111827 !important; 
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 140px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        pointer-events: none; 
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+
+    html.dark .filter-btn { background-color: rgba(31, 41, 55, 0.95); color: #d1d5db; border-color: #4b5563; }
+    html.dark .filter-btn.active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+    html.dark .spot-custom-label { background-color: rgba(31, 41, 55, 0.95); border-color: #4b5563; color: #fff !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="relative flex flex-col flex-grow w-full h-full">
+    
+    <!-- 検索バー・フィルター（常に地図の上） -->
+    <div class="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2 pointer-events-none">
+        <div class="flex gap-2 pointer-events-auto">
+            <div class="flex-grow relative">
+                <input type="text" id="placeSearchInput" 
+                       onkeydown="if(event.key==='Enter') searchPlaceOnMap()"
+                       oninput="suggestOpenPoi(this.value)"
+                       placeholder="場所・施設を検索" 
+                       class="w-full px-4 py-3 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-300 dark:border-gray-600 rounded-full text-sm shadow-md focus:outline-none dark:text-white">
+                <div id="poiSuggestList" class="hidden absolute top-12 left-0 right-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-20 max-h-48 overflow-y-auto"></div>
+            </div>
+            <button type="button" onclick="moveToCurrentLocation()" class="w-[46px] h-[46px] shrink-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center text-lg border border-gray-200 dark:border-gray-700 active:scale-95 transition">
+                📍
+            </button>
+        </div>
+
+        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1 pointer-events-auto">
+            <button type="button" onclick="changeZoomLevel('all', this)" class="filter-btn active shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🌐 すべて</button>
+            <button type="button" onclick="changeZoomLevel('10', this)" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🚗 10km</button>
+            <button type="button" onclick="changeZoomLevel('3', this)" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🚲 3km</button>
+            <button type="button" onclick="changeZoomLevel('1', this)" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm">🚶 1km</button>
+            <button type="button" id="toggleSpotsBtn" onclick="toggleRegionalSpots()" class="filter-btn shrink-0 px-4 py-2 rounded-full text-xs font-bold shadow-sm backdrop-blur-sm border-blue-200 text-blue-600 dark:border-indigo-600 dark:text-indigo-400">
+                📍 ピンを隠す
+            </button>
+        </div>
+    </div>
+
+    <!-- マップ描画エリア -->
+    <div id="map" class="flex-grow w-full"></div>
+</div>
+
+<!-- ==================== ★ 【追加】新規スポット確認モーダル ★ ==================== -->
+<!-- マップの何もないところをタップした時に出る画面 -->
+<div id="newSpotPromptModal" onclick="if(event.target.id==='newSpotPromptModal') closeNewSpotPromptModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
+    <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
+            <h3 class="font-bold text-base text-gray-900 dark:text-white" id="promptSpotName">📍 選択した場所</h3>
+            <button type="button" onclick="closeNewSpotPromptModal()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold text-gray-500">✕</button>
+        </div>
+        <div id="promptSpotContent" class="p-5 overflow-y-auto space-y-4 pb-8"></div>
+    </div>
+</div>
+
+<!-- ==================== ★ 【追加】投稿詳細モーダル（全画面対応） ★ ==================== -->
+<!-- すでに投稿されているピンをタップした時に出る画面（タイムラインのカードと同じデザイン） -->
+<div id="spotDetailModal" onclick="if(event.target.id==='spotDetailModal') closeSpotDetailModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
+    <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="height: 85vh;">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
+            <h3 class="font-bold text-base text-gray-900 dark:text-white truncate pr-2" id="detailSpotName">📍 スポット名</h3>
+            <button type="button" onclick="closeSpotDetailModal()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold shrink-0 text-gray-500">✕</button>
+        </div>
+        <div id="spotDetailContent" class="p-5 overflow-y-auto flex-grow pb-8 bg-gray-50 dark:bg-gray-900">
+            <!-- JSで投稿カードのHTMLがここに挿入されます -->
+        </div>
+    </div>
+</div>
+
+<!-- スポット登録モーダル（自作フォーム） -->
+<div id="spotModal" onclick="if(event.target.id==='spotModal') closeSpotModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
+    <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl border-t border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col animate-slide-up" style="max-height: 90vh;">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0 bg-white dark:bg-gray-800 relative z-10">
+            <h3 class="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2"><span>📍</span> スポットを登録</h3>
+            <button type="button" onclick="closeSpotModal()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-300 font-bold active:bg-gray-200">✕</button>
+        </div>
+        <form id="spotForm" onsubmit="submitSpotForm(event)" class="p-5 overflow-y-auto flex-grow space-y-5 pb-8" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" id="spotLat" name="lat">
+            <input type="hidden" id="spotLng" name="lng">
+            <input type="hidden" name="mobility" value="car">
+            <div class="text-[11px] bg-blue-50 dark:bg-indigo-900/30 text-blue-800 dark:text-indigo-300 px-3 py-2.5 rounded-lg border border-blue-200 dark:border-indigo-800 flex justify-between items-center">
+                <span>🌐 座標: <strong id="coordDisplay"></strong></span>
+                <span class="opacity-80">タップで微調整可</span>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">場所の名前 <span class="text-red-500">*</span></label>
+                <input type="text" id="spotNameInput" name="spot_name" required placeholder="例：海沿いの絶景ベンチ" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none dark:bg-gray-700 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">カテゴリ（ピンの色）</label>
+                <select id="spotCategoryInput" name="category" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-white">
+                    <option value="food">🍽️ ご飯・カフェ（オレンジピン）</option>
+                    <option value="scenery">🏞️ 風景・絶景（緑ピン）</option>
+                    <option value="other">📍 その他・みどころ（紫ピン）</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">現地の写真（任意）</label>
+                <input type="file" id="spotImageFile" name="images" multiple accept="image/*" onchange="previewSpotImage(this)" 
+                       class="w-full text-xs file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-blue-50 file:text-blue-700 dark:file:bg-indigo-900 dark:file:text-indigo-300 cursor-pointer text-gray-500">
+                <div id="imagePreviewWrap" class="hidden mt-3 relative rounded-xl overflow-hidden h-40">
+                    <img id="imagePreview" src="" alt="プレビュー" class="w-full h-full object-cover">
+                    <button type="button" onclick="clearSpotImage()" class="absolute top-2 right-2 bg-black/70 text-white text-xs px-3 py-1 rounded-lg">✕ 外す</button>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">感想・状況 <span class="text-red-500">*</span></label>
+                <textarea id="spotContentInput" name="content" rows="3" required placeholder="駐車場が広くて停めやすかったです！" class="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm resize-none dark:bg-gray-700 dark:text-white"></textarea>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">タグ</label>
+                <div class="flex flex-wrap gap-2 text-[11px]">
+                    <label><input type="checkbox" name="sub_tags" value="駐車場が広い" class="peer hidden"><span class="px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 peer-checked:bg-blue-50 peer-checked:border-blue-500 peer-checked:text-blue-700 dark:peer-checked:bg-indigo-900 dark:peer-checked:text-indigo-300 font-bold block">＋ 🅿️ 駐車場が広い</span></label>
+                    <label><input type="checkbox" name="sub_tags" value="季節もの・限定" class="peer hidden"><span class="px-3 py-1.5 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 peer-checked:bg-orange-50 peer-checked:border-orange-500 peer-checked:text-orange-700 dark:peer-checked:bg-orange-900 dark:peer-checked:text-orange-300 font-bold block">＋ 🍁 季節もの・限定</span></label>
+                </div>
+            </div>
+            <div class="pt-2">
+                <button type="submit" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition">📍 マップに登録する</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- AI提案モーダル -->
+<div id="aiModal" onclick="if(event.target.id==='aiModal') closeAiModal()" class="hidden fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
+    <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="max-height: 90vh;">
+        <div class="px-5 py-4 bg-gradient-to-r from-indigo-600 to-purple-700 text-white flex justify-between shrink-0 relative z-10">
+            <h3 class="font-bold text-base flex items-center gap-2"><span>🤖</span> AIお出かけ相談</h3>
+            <button type="button" onclick="closeAiModal()" class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold active:bg-white/40">✕</button>
+        </div>
+        <div class="p-5 overflow-y-auto flex-grow space-y-4 pb-8">
+            <select id="aiMobility" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm dark:bg-gray-700 dark:text-white"><option value="car">🚗 車・ドライブ</option><option value="bicycle">🚲 自転車・サイクリング</option><option value="walk">🚶 徒歩・お散歩</option></select>
+            <select id="aiDuration" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm dark:bg-gray-700 dark:text-white"><option value="サクッと1〜2時間">サクッと1〜2時間</option><option value="半日くらい">半日くらい</option><option value="1日たっぷり">1日たっぷり</option></select>
+            <select id="aiCompanion" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm dark:bg-gray-700 dark:text-white"><option value="1人で">👤 1人で</option><option value="友達と">👥 友達と</option><option value="恋人・夫婦で">💑 恋人・夫婦で</option><option value="家族・子供と">👨‍👩‍👧‍👦 家族・子供と</option></select>
+            <select id="aiMood" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm dark:bg-gray-700 dark:text-white"><option value="絶景を見て癒やされたい">🏞️ 絶景を見て癒やされたい</option><option value="美味しいスイーツやご飯が食べたい">🍰 美味しいものが食べたい</option><option value="静かな穴場でゆっくりしたい">🤫 静かな穴場でゆっくりしたい</option><option value="季節感を楽しみたい">🍁 季節感を楽しみたい</option></select>
+            <textarea id="aiFreeText" rows="2" placeholder="自由入力（例：海が見えるベンチ）" class="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm resize-none dark:bg-gray-700 dark:text-white"></textarea>
+            <div id="aiResultArea" class="hidden mt-4 p-4 bg-indigo-50 dark:bg-indigo-900 border border-indigo-100 dark:border-indigo-700 rounded-xl text-sm dark:text-gray-200"></div>
+            <button type="button" onclick="submitAiSuggest()" id="aiSubmitBtn" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-xl mt-4 shadow-lg active:scale-95 transition">✨ 提案してもらう</button>
+        </div>
+    </div>
+</div>
+
+{{ posts|json_script:"initial-spots-data" }}
+
+<script>
+    function initMap() {
+        const isDark = document.documentElement.classList.contains('dark');
+        
+        const params = new URLSearchParams(window.location.search);
+        const paramLat = parseFloat(params.get('lat'));
+        const paramLng = parseFloat(params.get('lng'));
+        const paramSpotId = parseInt(params.get('spot'));
+
+        const hasParam = !isNaN(paramLat) && !isNaN(paramLng);
+        const initialCenter = hasParam ? { lat: paramLat, lng: paramLng } : originPos;
+        const initialZoom = hasParam ? 16 : 14;
+
+        map = new google.maps.Map(document.getElementById("map"), {
+            center: initialCenter, 
+            zoom: initialZoom, 
+            minZoom: 9.5,
+            restriction: { latLngBounds: {north: 35.8, south: 34.0, west: 132.8, east: 134.6}, strictBounds: false },
+            mapTypeControl: false, 
+            streetViewControl: false, 
+            zoomControl: false,
+            fullscreenControl: false,
+            styles: isDark ? darkMapStyle : []
+        });
+
+        geocoder = new google.maps.Geocoder();
+        placesService = new google.maps.places.PlacesService(map);
+
+        initialSpots.forEach(spot => {
+            const shouldOpenImmediately = (spot.id === paramSpotId);
+            addSpotMarkerToMap(spot, shouldOpenImmediately);
+        });
+
+        map.addListener('click', (event) => {
+            const pos = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+            pinDropSound.currentTime = 0; 
+            pinDropSound.play().catch(e => {});
+
+            if (event.placeId) {
+                event.stop();
+                placesService.getDetails({ placeId: event.placeId, fields: ['name', 'formatted_address'] }, (place, status) => {
+                    if (status === 'OK') placeTempMarkerAndPrompt(pos, place.name, place.formatted_address);
+                    else fallbackToGeocoder(pos);
+                });
+            } else {
+                fallbackToGeocoder(pos);
+            }
+        });
+
+        if (navigator.geolocation) {
+            const geoOptions = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 };
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    originPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    userPosAcquired = true;
+                    if (!hasParam) map.setCenter(originPos);
+                    if (userMarker) userMarker.setMap(null);
+                    userMarker = new google.maps.Marker({
+                        position: originPos, map: map, zIndex: 999,
+                        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#ea4335", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
+                    });
+                },
+                () => console.warn("GPSエラー"), geoOptions
+            );
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    originPos = { lat: position.coords.latitude, lng: position.coords.longitude };
+                    userPosAcquired = true;
+                    if (userMarker) userMarker.setPosition(originPos);
+                },
+                () => console.warn("GPS追跡エラー"), geoOptions
+            );
+        }
+    }
+
+    function moveToCurrentLocation() { 
+        if (map && originPos) { 
+            map.setCenter(originPos); 
+            map.setZoom(15); 
+            if (!userMarker || !userMarker.getMap()) {
+                if(userMarker) userMarker.setMap(null);
+                userMarker = new google.maps.Marker({
+                    position: originPos, map: map, zIndex: 999,
+                    icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#ea4335", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
+                });
+            } else {
+                userMarker.setPosition(originPos);
+            }
+        } 
+    }
+
+    const darkMapStyle = [
+        { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+        { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+        { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+        { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+        { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#9ca5b3" }] }
+    ];
+
+    let map, geocoder, placesService, userMarker = null, tempClickMarker = null;
+    let spotMarkers = [], spotsVisible = true, currentRadius = 'all', userPosAcquired = false;
+    let originPos = { lat: 34.6655, lng: 133.9180 }; 
+    const initialSpots = JSON.parse(document.getElementById('initial-spots-data').textContent);
+
+    function fallbackToGeocoder(pos) {
+        geocoder.geocode({ location: pos }, (results, status) => {
+            let addr = (status === 'OK' && results[0]) ? results[0].formatted_address.replace(/^日本、(〒\d{3}-\d{4}\s*)?/, '') : '';
+            placeTempMarkerAndPrompt(pos, '', addr);
+        });
+    }
+
+    // ==============================================================
+    // ★ 修正箇所：何もない場所をタップした時のモーダル表示
+    // ==============================================================
+    function placeTempMarkerAndPrompt(pos, placeName, addressText) {
+        if (tempClickMarker) tempClickMarker.setMap(null);
+        tempClickMarker = new google.maps.Marker({ position: pos, map: map, animation: google.maps.Animation.DROP });
+        
+        const safeName = (placeName || addressText || '').replace(/'/g, "\\'");
+        const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=400x200&location=${pos.lat},${pos.lng}&key={{ api_key }}`;
+        
+        document.getElementById('promptSpotName').innerText = placeName || '📍 選択した場所';
+        
+        const html = `
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">${addressText || `緯度: ${pos.lat.toFixed(4)}, 経度: ${pos.lng.toFixed(4)}`}</p>
+            <div class="w-full h-40 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden mb-4">
+                <img src="${streetViewUrl}" alt="周辺の風景" class="w-full h-full object-cover" 
+                     onerror="this.style.display='none'; this.parentNode.innerHTML='<span class=\\'text-xs text-gray-500 flex h-full items-center justify-center\\'>ストリートビュー画像がありません</span>';">
+            </div>
+            <div class="flex flex-col gap-3">
+                <button type="button" onclick="submitCheckin(${pos.lat}, ${pos.lng}, '${safeName}'); closeNewSpotPromptModal();" class="w-full py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2">✅ ここに行った！（チェックイン）</button>
+                <button type="button" onclick="openSpotModal(${pos.lat}, ${pos.lng}, '${safeName}'); closeNewSpotPromptModal();" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2">🖊️ ここに投稿する</button>
+            </div>
+        `;
+        document.getElementById('promptSpotContent').innerHTML = html;
+        document.getElementById('newSpotPromptModal').classList.remove('hidden');
+        
+        map.panTo(pos);
+        // モーダルが下から出るため、ピンが被らないように上にカメラをズラす
+        setTimeout(() => map.panBy(0, 150), 100); 
+    }
+
+    function closeNewSpotPromptModal() { document.getElementById('newSpotPromptModal').classList.add('hidden'); }
+
+    // ==============================================================
+    // ★ 修正箇所：既存の投稿ピンをタップした時のモーダル表示
+    // ==============================================================
+    function addSpotMarkerToMap(spot, openImmediately = false) {
+        let pinColor = '#a855f7'; 
+        if (spot.category === 'food') pinColor = '#f59e0b';
+        else if (spot.category === 'scenery') pinColor = '#10b981';
+
+        const sMarker = new google.maps.Marker({
+            position: { lat: spot.lat, lng: spot.lng }, map: map, zIndex: 10,
+            icon: { path: "M12,2C8.1,2,5,5.1,5,9c0,5.2,7,13,7,13s7-7.8,7-13C19,5.1,15.9,2,12,2z M12,11.5c-1.4,0-2.5-1.1-2.5-2.5s1.1-2.5,2.5-2.5s2.5,1.1,2.5,2.5S13.4,11.5,12,11.5z", scale: 1.5, fillColor: pinColor, fillOpacity: 1, strokeWeight: 1, strokeColor: "#ffffff", anchor: new google.maps.Point(12, 22), labelOrigin: new google.maps.Point(12, -8) }
+        });
+        spotMarkers.push({ marker: sMarker, data: spot });
+
+        if (currentRadius !== 'all') {
+            sMarker.setLabel({ text: spot.content.substring(0, 15) + '...', className: 'spot-custom-label' });
+        }
+
+        sMarker.addListener('click', () => {
+            const naviUrl = `https://www.google.com/maps/dir/?api=1&destination=${spot.lat},${spot.lng}`;
+            const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=400x300&location=${spot.lat},${spot.lng}&key={{ api_key }}`;
+            const targetImgUrl = spot.image_url ? spot.image_url : streetViewUrl;
+            
+            // タグのHTML作成
+            let tagsHtml = '';
+            if (spot.sub_tags && spot.sub_tags.length > 0) {
+                const tags = Array.isArray(spot.sub_tags) ? spot.sub_tags : spot.sub_tags.split(',');
+                tagsHtml = tags.map(t => `<span class="px-2.5 py-1 rounded-full font-bold bg-blue-50 text-blue-700 dark:bg-indigo-900 dark:text-indigo-300 text-[10px]">#${t.trim()}</span>`).join('');
+            }
+            
+            const initial = spot.username ? spot.username.charAt(0).toUpperCase() : 'G';
+            document.getElementById('detailSpotName').innerText = spot.spot_name;
+            
+            // タイムラインのカードと全く同じデザインのHTMLを構築
+            const html = `
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-4">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 rounded-full bg-neutral-800 text-white font-bold flex items-center justify-center text-sm shrink-0">
+                            ${initial}
+                        </div>
+                        <div>
+                            <p class="font-bold text-sm text-gray-900 dark:text-white">@${spot.username || 'ゲスト'}</p>
+                            <p class="text-[10px] text-gray-500">${spot.created_at || ''}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-1.5 mb-3">
+                        <span class="px-2 py-0.5 rounded font-bold bg-neutral-800 text-white text-[10px]">${spot.mobility_label || '移動手段'}</span>
+                        <span class="px-2 py-0.5 rounded font-bold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-900 dark:text-teal-300 dark:border-teal-800 text-[10px]">${spot.category_label || 'カテゴリ'}</span>
+                        ${tagsHtml}
+                    </div>
+
+                    <p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line mb-3">${spot.content}</p>
+
+                    <div class="w-full h-48 rounded-xl overflow-hidden mb-4 border border-gray-100 dark:border-gray-700 bg-gray-100 dark:bg-gray-800">
+                        <img src="${targetImgUrl}" alt="${spot.spot_name}" class="w-full h-full object-cover" 
+                             onerror="this.src='${streetViewUrl}'; this.onerror=function(){ this.style.display='none'; this.parentNode.innerHTML='<span class=\\'text-xs text-gray-500 flex h-full items-center justify-center\\'>画像がありません</span>'; }">
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <a href="${naviUrl}" target="_blank" class="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+                        🗺️ ここへ行く（ナビ起動）
+                    </a>
+                </div>
+            `;
+            
+            document.getElementById('spotDetailContent').innerHTML = html;
+            document.getElementById('spotDetailModal').classList.remove('hidden');
+            
+            map.panTo(sMarker.getPosition());
+            setTimeout(() => map.panBy(0, 150), 100);
+        });
+
+        if (openImmediately) {
+            setTimeout(() => { google.maps.event.trigger(sMarker, 'click'); }, 500);
+        }
+    }
+
+    function closeSpotDetailModal() { document.getElementById('spotDetailModal').classList.add('hidden'); }
+
+    // ==============================================================
+
+    function changeZoomLevel(radiusStr, btnElement) {
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        if (btnElement) btnElement.classList.add('active');
+        if (userPosAcquired) map.panTo(originPos);
+        
+        const zMap = {'1':15, '3':13, '10':11, 'all':10};
+        if(zMap[radiusStr]) map.setZoom(zMap[radiusStr]);
+        currentRadius = radiusStr;
+        
+        spotMarkers.forEach(item => {
+            if (spotsVisible && radiusStr !== 'all') item.marker.setLabel({ text: item.data.content.substring(0, 15), className: 'spot-custom-label' });
+            else item.marker.setLabel(null);
+        });
+    }
+
+    function toggleRegionalSpots() {
+        spotsVisible = !spotsVisible;
+        document.getElementById('toggleSpotsBtn').innerText = spotsVisible ? '📍 ピンを隠す' : '📍 ピンを表示';
+        spotMarkers.forEach(item => item.marker.setMap(spotsVisible ? map : null));
+    }
+
+    let suggestTimer = null;
+    function suggestOpenPoi(keyword) {
+        const listEl = document.getElementById('poiSuggestList');
+        if (!keyword || keyword.length < 2) { listEl.classList.add('hidden'); return; }
+        clearTimeout(suggestTimer);
+        suggestTimer = setTimeout(async () => {
+            try {
+                const res = await fetch(`https://api.openpoiapi.com/v1/suggest?q=${encodeURIComponent(keyword)}&limit=5`);
+                if (!res.ok) return;
+                const data = await res.json();
+                const items = data.results || data.items || [];
+                if (items.length === 0) { listEl.classList.add('hidden'); return; }
+                
+                listEl.innerHTML = '';
+                items.forEach(item => {
+                    const name = item.name || keyword;
+                    const addr = item.address || '';
+                    const lat = item.lat || (item.location && item.location.lat);
+                    const lng = item.lng || item.lon || (item.location && item.location.lng);
+                    if (!lat || !lng) return;
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'w-full text-left px-4 py-3 hover:bg-blue-50 text-xs block transition dark:hover:bg-gray-700';
+                    btn.innerHTML = `<div class="font-bold">📍 ${name}</div><div class="text-gray-400 text-[10px] mt-0.5">${addr}</div>`;
+                    btn.onclick = () => {
+                        listEl.classList.add('hidden');
+                        document.getElementById('placeSearchInput').value = name;
+                        const pos = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                        map.setCenter(pos); map.setZoom(16);
+                        placeTempMarkerAndPrompt(pos, name, addr);
+                    };
+                    listEl.appendChild(btn);
+                });
+                listEl.classList.remove('hidden');
+            } catch (e) {}
+        }, 250);
+    }
+
+    function searchPlaceOnMap() {
+        const query = document.getElementById('placeSearchInput').value.trim();
+        if (!query || !geocoder) return;
+        document.getElementById('poiSuggestList').classList.add('hidden');
+        geocoder.geocode({ address: query, componentRestrictions: { administrativeArea: '岡山県' } }, (results, status) => {
+            if (status === 'OK' && results[0]) {
+                const loc = results[0].geometry.location;
+                const pos = { lat: loc.lat(), lng: loc.lng() };
+                map.setCenter(pos); map.setZoom(16);
+                placeTempMarkerAndPrompt(pos, query, results[0].formatted_address.replace(/^日本、(〒\d{3}-\d{4}\s*)?/, ''));
+            } else {
+                alert('岡山県内で見つかりませんでした。');
+            }
+        });
+    }
+
+    function getCookie(name) {
+        let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    function openSpotModal(lat, lng, defaultName) {
+        document.getElementById('spotLat').value = lat; document.getElementById('spotLng').value = lng;
+        document.getElementById('coordDisplay').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        document.getElementById('spotNameInput').value = defaultName || '';
+        document.getElementById('spotModal').classList.remove('hidden');
+    }
+    function closeSpotModal() { document.getElementById('spotModal').classList.add('hidden'); }
+    function openAiModal() { document.getElementById('aiResultArea').classList.add('hidden'); document.getElementById('aiResultArea').innerHTML = ''; document.getElementById('aiModal').classList.remove('hidden'); }
+    function closeAiModal() { document.getElementById('aiModal').classList.add('hidden'); }
+
+    function previewSpotImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreviewWrap').classList.remove('hidden');
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+    function clearSpotImage() {
+        document.getElementById('spotImageFile').value = '';
+        document.getElementById('imagePreviewWrap').classList.add('hidden');
+    }
+
+    async function submitSpotForm(e) {
+        e.preventDefault();
+        const form = e.target;
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true; btn.innerText = "⏳ 登録中...";
+        try {
+            const res = await fetch("{% url 'map' %}", { method: "POST", headers: {"X-CSRFToken": getCookie("csrftoken"), "X-Requested-With": "XMLHttpRequest"}, body: new FormData(form) });
+            const data = await res.json();
+            if (data.status === 'ok') { 
+                alert("📍 登録しました！"); 
+                closeSpotModal(); form.reset(); clearSpotImage(); 
+                if(tempClickMarker) tempClickMarker.setMap(null);
+                addSpotMarkerToMap(data.spot); 
+            } else { alert("エラー: " + data.message); }
+        } catch(e) { alert("エラーが発生しました。"); }
+        btn.disabled = false; btn.innerText = "📍 マップに登録する";
+    }
+
+    async function submitCheckin(lat, lng, spotName) {
+        if (!spotName) { spotName = prompt("場所の名前を入力："); if(!spotName) return; }
+        try {
+            const res = await fetch("{% url 'checkin' %}", { method: "POST", headers: {"Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken")}, body: JSON.stringify({spot_name: spotName, lat, lng}) });
+            const data = await res.json();
+            if(data.status === 'ok') { alert("✅ チェックインしました！"); closeNewSpotPromptModal(); if(tempClickMarker) tempClickMarker.setMap(null); }
+        } catch(e) {}
+    }
+
+</script>
+
+<script async defer src="https://maps.googleapis.com/maps/api/js?key={{ api_key }}&libraries=places&callback=initMap"></script>
+{% endblock %}

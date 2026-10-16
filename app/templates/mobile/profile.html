@@ -1,0 +1,455 @@
+{% extends 'mobile/base.html' %}
+
+{% block title %}@{{ target_user.username }}さんのプロフィール | マッピン{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ==============================================================
+       ★ インスタ風 マイページ（プロフィール）デザイン ★
+       ============================================================== */
+    /* グリッド表示時の正方形タイル */
+    .post-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+    }
+    .post-grid-item {
+        aspect-ratio: 1 / 1;
+        position: relative;
+        overflow: hidden;
+        background-color: #f3f4f6; /* gray-100 */
+    }
+    .post-grid-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    /* 画像がない投稿の場合は文字を見せる */
+    .post-grid-text-only {
+        padding: 8px;
+        font-size: 10px;
+        color: #4b5563; /* gray-600 */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+        word-break: break-word;
+        overflow: hidden;
+    }
+
+    /* タブの切り替えアニメーション */
+    .ig-tab {
+        position: relative;
+        color: #9ca3af; /* gray-400 */
+        transition: color 0.2s;
+    }
+    .ig-tab.active {
+        color: #111827; /* gray-900 */
+    }
+    html.dark .ig-tab.active { color: #f3f4f6; }
+    
+    .ig-tab.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 1px;
+        background-color: #111827;
+    }
+    html.dark .ig-tab.active::after { background-color: #f3f4f6; }
+
+    /* 下からスライドアップするボトムシート（設定メニュー等） */
+    @keyframes slideUpSheet {
+        from { transform: translateY(100%); }
+        to { transform: translateY(0); }
+    }
+    .bottom-sheet {
+        display: none;
+        animation: slideUpSheet 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .bottom-sheet.visible { display: flex; }
+
+    html.dark .post-grid-item { background-color: #374151; }
+    html.dark .post-grid-text-only { background: linear-gradient(135deg, #374151, #1f2937); color: #d1d5db; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="bg-white dark:bg-gray-900 min-h-full pb-20">
+    
+    <!-- ==================== 上部ヘッダー（ユーザー名 ＆ 設定ボタン） ==================== -->
+    <div class="sticky top-0 z-20 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <a href="javascript:history.back()" class="text-xl text-gray-800 dark:text-gray-200 cursor-pointer">←</a>
+            <h1 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                {{ target_user.first_name|default:target_user.username }}
+                {% if user.is_authenticated and user == target_user %}
+                <span class="text-[10px] bg-gray-200 dark:bg-gray-700 px-2 py-0.5 rounded-full text-gray-600 dark:text-gray-300 ml-1">あなた</span>
+                {% endif %}
+            </h1>
+        </div>
+        
+        <!-- 自分のページなら歯車（設定）、他人なら点々（メニュー） -->
+        {% if user.is_authenticated and user == target_user %}
+        <button type="button" onclick="openSettingsSheet()" class="text-xl text-gray-800 dark:text-gray-200 active:scale-90 transition">
+            ⚙️
+        </button>
+        {% else %}
+        <button type="button" class="text-xl text-gray-800 dark:text-gray-200">
+            ⋮
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- ==================== プロフィール情報エリア ==================== -->
+    <div class="px-4 pt-4 pb-3">
+        <!-- アイコンとステータス（投稿・フォロワー数） -->
+        <div class="flex items-center justify-between mb-4">
+            <!-- アイコン -->
+            <div class="relative shrink-0">
+                <div class="w-20 h-20 rounded-full border border-gray-200 dark:border-gray-700 bg-neutral-800 text-white flex items-center justify-center font-bold text-2xl overflow-hidden p-0.5">
+                    {% if profile.avatar %}
+                        <img src="{{ profile.avatar.url }}" alt="アイコン" class="w-full h-full object-cover rounded-full">
+                    {% else %}
+                        {{ target_user.username|slice:":1"|upper }}
+                    {% endif %}
+                </div>
+                <!-- 自分のページなら右下に＋アイコン（アイコン変更用） -->
+                {% if user.is_authenticated and user == target_user %}
+                <button type="button" onclick="openProfileEditModal()" class="absolute bottom-0 right-0 w-6 h-6 bg-blue-500 border-2 border-white dark:border-gray-900 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm">
+                    ＋
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- ステータス数字 -->
+            <div class="flex gap-4 sm:gap-6 flex-grow justify-center text-center">
+                <div class="flex flex-col">
+                    <span class="font-bold text-base text-gray-900 dark:text-white">{{ posts|length }}</span>
+                    <span class="text-[11px] text-gray-500 dark:text-gray-400">投稿</span>
+                </div>
+                <button type="button" onclick="openFollowModal('followers')" class="flex flex-col items-center">
+                    <span id="followers-count-display" class="font-bold text-base text-gray-900 dark:text-white">{{ target_user.followers.count|default:0 }}</span>
+                    <span class="text-[11px] text-gray-500 dark:text-gray-400">フォロワー</span>
+                </button>
+                <button type="button" onclick="openFollowModal('following')" class="flex flex-col items-center">
+                    <span class="font-bold text-base text-gray-900 dark:text-white">{{ target_user.following.count|default:0 }}</span>
+                    <span class="text-[11px] text-gray-500 dark:text-gray-400">フォロー中</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 自己紹介 -->
+        <div class="mb-4">
+            <p class="font-bold text-sm text-gray-900 dark:text-white mb-0.5">@{{ target_user.username }}</p>
+            <p class="text-[13px] text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line">
+                {% if profile.bio %}{{ profile.bio }}{% else %}<span class="text-gray-400">自己紹介はまだありません。</span>{% endif %}
+            </p>
+        </div>
+
+        <!-- アクションボタン（プロフィール編集 or フォロー） -->
+        <div class="flex gap-2">
+            {% if user.is_authenticated and user == target_user %}
+                <button onclick="openProfileEditModal()" class="flex-grow py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-[13px] font-bold rounded-lg transition">
+                    プロフィールを編集
+                </button>
+                <button onclick="alert('準備中')" class="flex-grow py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-[13px] font-bold rounded-lg transition">
+                    プロフィールをシェア
+                </button>
+            {% elif user.is_authenticated %}
+                <button onclick="toggleProfileFollow(this, '{{ target_user.username }}')" 
+                        class="flex-grow py-1.5 rounded-lg text-[13px] font-bold transition 
+                               {% if is_following %}bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white{% else %}bg-blue-600 text-white{% endif %}">
+                    {% if is_following %}フォロー中{% else %}フォローする{% endif %}
+                </button>
+                <button onclick="alert('DM機能は準備中です')" class="flex-grow py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-[13px] font-bold rounded-lg transition">
+                    メッセージ
+                </button>
+            {% else %}
+                <a href="{% url 'login' %}" class="flex-grow py-1.5 bg-blue-600 text-white text-center text-[13px] font-bold rounded-lg transition">
+                    ログインしてフォロー
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ==================== 投稿一覧タブ（グリッド表示） ==================== -->
+    <div class="grid grid-cols-2 text-center border-t border-gray-200 dark:border-gray-800">
+        <button class="ig-tab active py-3 flex justify-center items-center">
+            <!-- グリッドアイコン -->
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+        <button class="ig-tab py-3 flex justify-center items-center" onclick="alert('お気に入り・タグ付け機能は準備中です')">
+            <!-- ユーザーアイコン（タグ付けされた投稿など） -->
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </button>
+    </div>
+
+    <!-- 投稿グリッド -->
+    {% if posts %}
+    <div class="post-grid">
+        {% for post in posts %}
+        <a href="{% url 'map' %}?lat={{ post.latitude }}&lng={{ post.longitude }}&spot={{ post.id }}" class="post-grid-item block">
+            {% if post.first_image_url %}
+                <img src="{{ post.first_image_url }}" alt="{{ post.spot_name }}" loading="lazy">
+                <!-- 複数画像があるようなアイコンを右上に（装飾） -->
+                <div class="absolute top-1 right-1 text-white opacity-80">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="14" height="14" rx="2"></rect><path d="M7 21h14a2 2 0 0 0 2-2V7"></path></svg>
+                </div>
+            {% else %}
+                <!-- 写真がない場合はテキストとアイコンで表現 -->
+                <div class="w-full h-full post-grid-text-only flex-col">
+                    <span class="text-xl mb-1">
+                        {% if post.category == 'food' %}🍽️{% elif post.category == 'scenery' %}🏞️{% else %}📍{% endif %}
+                    </span>
+                    <span class="font-bold text-[10px] leading-tight line-clamp-2">{{ post.spot_name }}</span>
+                </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="py-16 flex flex-col items-center justify-center text-center px-6">
+        <div class="w-16 h-16 rounded-full border-2 border-gray-800 dark:border-gray-200 flex items-center justify-center mb-4">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+        </div>
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-2">まだ投稿がありません</h2>
+        <p class="text-sm text-gray-500">写真を撮ってスポットをシェアしよう！</p>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- ==================== ★ 設定メニュー（下からスライドアップするボトムシート） ★ ==================== -->
+<div id="settingsSheet" onclick="if(event.target.id==='settingsSheet') closeSettingsSheet()" class="hidden fixed inset-0 z-[99999] bg-black/50 backdrop-blur-sm flex-col justify-end">
+    <div class="bottom-sheet flex-col bg-white dark:bg-gray-800 w-full rounded-t-2xl pb-safe">
+        <div class="w-full flex justify-center pt-3 pb-2">
+            <div class="w-10 h-1.5 bg-gray-300 dark:bg-gray-600 rounded-full"></div>
+        </div>
+        
+        <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+            <h3 class="text-center font-bold text-gray-900 dark:text-white text-sm">設定とアクティビティ</h3>
+        </div>
+
+        <div class="flex flex-col py-2">
+            <button onclick="openProfileEditModal(); closeSettingsSheet();" class="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition w-full text-left">
+                <span class="text-xl">✏️</span>
+                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">プロフィールを編集</span>
+            </button>
+            <button onclick="alert('準備中です')" class="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition w-full text-left">
+                <span class="text-xl">🔖</span>
+                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">保存済み（お気に入り）</span>
+            </button>
+            <button onclick="toggleGlobalDarkMode(); closeSettingsSheet();" class="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition w-full text-left">
+                <span class="text-xl theme-icon">🌙</span>
+                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">テーマ切り替え</span>
+            </button>
+            
+            <div class="h-px bg-gray-100 dark:bg-gray-700 my-2"></div>
+            
+            <a href="{% url 'logout' %}" class="flex items-center gap-3 px-5 py-3.5 hover:bg-red-50 dark:hover:bg-red-900/20 transition w-full text-left">
+                <span class="text-xl text-red-500">🚪</span>
+                <span class="text-sm font-bold text-red-500">ログアウト</span>
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== ★ プロフィール編集モーダル ★ ==================== -->
+<div id="profile-edit-modal" onclick="if(event.target.id==='profile-edit-modal') closeProfileEditModal()" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end justify-center z-[99999]">
+    <div class="bg-white w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh] dark:bg-gray-800 animate-slide-up pb-safe">
+        
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0">
+            <button type="button" onclick="closeProfileEditModal()" class="text-gray-500 font-bold px-2 py-1">キャンセル</button>
+            <span class="text-base font-bold text-gray-900 dark:text-white">プロフィールを編集</span>
+            <button type="submit" id="profileSaveBtn" form="profileEditForm" class="text-blue-500 font-bold px-2 py-1">完了</button>
+        </div>
+
+        <form id="profileEditForm" onsubmit="submitProfileEdit(event)" class="overflow-y-auto flex-grow relative p-4 space-y-6" enctype="multipart/form-data">
+            
+            <!-- アイコン変更 -->
+            <div class="flex flex-col items-center">
+                <div class="w-20 h-20 rounded-full bg-gray-200 dark:bg-gray-700 relative overflow-hidden mb-2" onclick="document.getElementById('avatarInput').click()">
+                    <img id="avatarPreview" src="{% if profile.avatar %}{{ profile.avatar.url }}{% endif %}" class="w-full h-full object-cover {% if not profile.avatar %}hidden{% endif %}">
+                    {% if not profile.avatar %}
+                    <div id="avatarPlaceholder" class="w-full h-full bg-neutral-700 flex items-center justify-center text-2xl text-white font-bold">
+                        {{ target_user.username|slice:":1"|upper }}
+                    </div>
+                    {% endif %}
+                </div>
+                <button type="button" onclick="document.getElementById('avatarInput').click()" class="text-blue-500 text-xs font-bold">写真を変更</button>
+                <input type="file" id="avatarInput" name="avatar" accept="image/*" class="hidden" onchange="previewProfileImage(this, 'avatarPreview')">
+            </div>
+
+            <!-- ヘッダー背景変更（インスタ風ではあまり使いませんが一応残す） -->
+            <div class="hidden">
+                <input type="file" id="headerImageInput" name="header_image" accept="image/*" onchange="previewProfileImage(this, 'headerPreview')">
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[11px] text-gray-500 dark:text-gray-400 mb-1">名前</label>
+                    <input type="text" name="first_name" value="{{ target_user.first_name|default:target_user.username }}" class="w-full px-0 py-2 border-b border-gray-300 dark:border-gray-600 bg-transparent text-sm focus:outline-none focus:border-blue-500 dark:text-white" required>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-500 dark:text-gray-400 mb-1">自己紹介</label>
+                    <textarea name="bio" rows="3" class="w-full px-0 py-2 border-b border-gray-300 dark:border-gray-600 bg-transparent text-sm resize-none focus:outline-none focus:border-blue-500 dark:text-white">{% if profile.bio %}{{ profile.bio }}{% endif %}</textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ==================== ★ フォロー/フォロワー一覧モーダル ★ ==================== -->
+<div id="follow-modal" onclick="if(event.target.id==='follow-modal') closeFollowModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex items-end justify-center">
+    <div class="bg-white w-full rounded-t-2xl shadow-2xl flex flex-col h-[85vh] dark:bg-gray-800 animate-slide-up pb-safe">
+        
+        <div class="px-4 py-3 flex items-center justify-between shrink-0 border-b border-gray-200 dark:border-gray-700">
+            <span class="text-base font-bold text-gray-900 dark:text-white">{{ target_user.first_name|default:target_user.username }}</span>
+            <button type="button" onclick="closeFollowModal()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center font-bold">✕</button>
+        </div>
+
+        <div class="grid grid-cols-2 text-sm text-center border-b border-gray-200 dark:border-gray-700 shrink-0">
+            <button onclick="switchFollowTab('followers')" id="tab-followers" class="ig-tab active py-3 font-bold">フォロワー</button>
+            <button onclick="switchFollowTab('following')" id="tab-following" class="ig-tab py-3 font-bold">フォロー中</button>
+        </div>
+
+        <div class="overflow-x-hidden flex-grow relative">
+            <div id="follow-swipe-container" class="flex w-[200%] h-full transition-transform duration-300 ease-out">
+                <div class="w-1/2 h-full overflow-y-auto p-0" id="list-followers"></div>
+                <div class="w-1/2 h-full overflow-y-auto p-0" id="list-following"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== JS処理 ==================== -->
+<script>
+    function getCookie(name) {
+        let match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? decodeURIComponent(match[2]) : null;
+    }
+
+    // --- ボトムシート（設定メニュー）制御 ---
+    function openSettingsSheet() {
+        document.getElementById('settingsSheet').classList.remove('hidden');
+        document.getElementById('settingsSheet').querySelector('.bottom-sheet').classList.add('visible');
+    }
+    function closeSettingsSheet() {
+        document.getElementById('settingsSheet').classList.add('hidden');
+        document.getElementById('settingsSheet').querySelector('.bottom-sheet').classList.remove('visible');
+    }
+
+    // --- フォロー切り替え ---
+    async function toggleProfileFollow(btn, targetUsername) {
+        btn.disabled = true;
+        try {
+            const res = await fetch(`/api/toggle_follow/${targetUsername}/`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                if (data.is_following) {
+                    btn.innerText = 'フォロー中';
+                    btn.className = 'flex-grow py-1.5 rounded-lg text-[13px] font-bold transition bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white';
+                } else {
+                    btn.innerText = 'フォローする';
+                    btn.className = 'flex-grow py-1.5 rounded-lg text-[13px] font-bold transition bg-blue-600 text-white';
+                }
+                const countDisplay = document.getElementById('followers-count-display');
+                if (countDisplay) countDisplay.innerText = data.followers_count;
+            } else { alert(data.message); }
+        } catch (e) {} finally { btn.disabled = false; }
+    }
+
+    // --- プロフィール編集 ---
+    function openProfileEditModal() { document.getElementById('profile-edit-modal').classList.remove('hidden'); }
+    function closeProfileEditModal() { document.getElementById('profile-edit-modal').classList.add('hidden'); }
+    function previewProfileImage(input, previewId) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById(previewId).src = e.target.result;
+                document.getElementById(previewId).classList.remove('hidden');
+                if(previewId === 'avatarPreview') {
+                    const ph = document.getElementById('avatarPlaceholder');
+                    if(ph) ph.style.display = 'none';
+                }
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+    async function submitProfileEdit(e) {
+        e.preventDefault(); 
+        const form = document.getElementById('profileEditForm');
+        const btn = document.getElementById('profileSaveBtn');
+        btn.disabled = true; btn.innerText = '保存中...';
+        try {
+            const res = await fetch("{% url 'edit_profile_api' %}", { method: "POST", headers: { "X-CSRFToken": getCookie("csrftoken") }, body: new FormData(form) });
+            const data = await res.json();
+            if (data.status === 'ok') { location.reload(); } else { alert(data.message); btn.disabled = false; btn.innerText = '完了'; }
+        } catch (err) { btn.disabled = false; btn.innerText = '完了'; }
+    }
+
+    // --- フォロー一覧（スワイプ） ---
+    const targetUsername = "{{ target_user.username }}";
+    let currentFollowTab = 'followers';
+    let followDataCache = { following: null, followers: null };
+
+    function openFollowModal(initialTab) {
+        document.getElementById('follow-modal').classList.remove('hidden');
+        followDataCache = { following: null, followers: null };
+        document.getElementById('list-following').innerHTML = '<div class="p-8 text-center text-gray-400 text-sm">読み込み中...</div>';
+        document.getElementById('list-followers').innerHTML = '<div class="p-8 text-center text-gray-400 text-sm">読み込み中...</div>';
+        switchFollowTab(initialTab);
+    }
+    function closeFollowModal() { document.getElementById('follow-modal').classList.add('hidden'); }
+
+    function switchFollowTab(tabType) {
+        currentFollowTab = tabType;
+        document.getElementById('tab-following').classList.remove('active');
+        document.getElementById('tab-followers').classList.remove('active');
+        document.getElementById(`tab-${tabType}`).classList.add('active');
+        const container = document.getElementById('follow-swipe-container');
+        container.style.transform = (tabType === 'followers') ? 'translateX(0%)' : 'translateX(-50%)';
+        if (!followDataCache[tabType]) loadFollowData(tabType);
+    }
+
+    async function loadFollowData(listType) {
+        const listEl = document.getElementById(`list-${listType}`);
+        try {
+            const res = await fetch(`/api/follow_list/${targetUsername}/${listType}/`);
+            const data = await res.json();
+            if (data.status === 'ok') {
+                followDataCache[listType] = data.users;
+                listEl.innerHTML = '';
+                if (data.users.length === 0) { listEl.innerHTML = '<div class="p-10 text-center text-gray-500 text-sm">ユーザーがいません。</div>'; return; }
+                data.users.forEach(u => {
+                    const avatar = u.avatar_url ? `<img src="${u.avatar_url}" class="w-12 h-12 rounded-full object-cover">` : `<div class="w-12 h-12 rounded-full bg-neutral-700 text-white flex items-center justify-center font-bold text-lg">${u.username.charAt(0).toUpperCase()}</div>`;
+                    listEl.innerHTML += `
+                        <a href="/profile/${u.username}/" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
+                            ${avatar}
+                            <div>
+                                <p class="text-[13px] font-bold text-gray-900 dark:text-white">${u.name}</p>
+                                <p class="text-[11px] text-gray-500">@${u.username}</p>
+                            </div>
+                        </a>
+                    `;
+                });
+            }
+        } catch (e) {}
+    }
+
+    let touchStartX = 0; let touchEndX = 0;
+    const swipeCont = document.getElementById('follow-swipe-container');
+    swipeCont.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
+    swipeCont.addEventListener('touchend', e => { 
+        touchEndX = e.changedTouches[0].screenX; 
+        if (touchEndX < touchStartX - 50 && currentFollowTab === 'followers') switchFollowTab('following');
+        if (touchEndX > touchStartX + 50 && currentFollowTab === 'following') switchFollowTab('followers');
+    }, {passive: true});
+
+</script>
+{% endblock %}

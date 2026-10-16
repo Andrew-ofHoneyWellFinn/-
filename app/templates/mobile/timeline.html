@@ -1,0 +1,346 @@
+{% extends 'mobile/base.html' %}
+
+{% block title %}検索・タイムライン | マッピン{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ==============================================================
+       ★ スマホ専用タイムライン＆検索UI ★
+       ============================================================== */
+    /* 検索パネルが開くアニメーション */
+    .search-panel {
+        display: none;
+        animation: slideDown 0.2s ease-out forwards;
+    }
+    .search-panel.visible { display: block; }
+    
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 検索チップの選択状態 */
+    .search-chip.is-selected {
+        background-color: #3b82f6 !important; /* blue-500 */
+        color: white !important;
+        border-color: #3b82f6 !important;
+    }
+
+    /* X風のタブ下線インジケーター */
+    .feed-tab {
+        position: relative;
+        color: #6b7280;
+        font-weight: 500;
+        background-color: transparent;
+    }
+    .feed-tab.active {
+        color: #111827;
+        font-weight: 700;
+    }
+    .feed-tab.active::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 3px;
+        background-color: #1a73e8;
+        border-radius: 9999px;
+    }
+
+    /* ダークモード対応 */
+    html.dark .search-chip { background-color: #374151; color: #d1d5db; border-color: #4b5563; }
+    html.dark .feed-tab { color: #9ca3af; }
+    html.dark .feed-tab.active { color: #f3f4f6; }
+    html.dark .post-card { border-color: #374151; }
+    html.dark .recommendation-card { background-color: #1f2937; border-color: #374151; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- ヘッダー下部の固定タブ（タイムライン / フォロー中） -->
+<div class="sticky top-0 z-30 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700">
+    <div class="grid grid-cols-2 text-sm text-center">
+        <button onclick="switchFeedTab('timeline', this)" class="feed-tab active py-3.5 transition cursor-pointer">
+            おすすめ
+        </button>
+        <button onclick="switchFeedTab('following', this)" class="feed-tab py-3.5 transition cursor-pointer">
+            フォロー中
+        </button>
+    </div>
+</div>
+
+<div class="px-4 py-4 pb-24">
+
+    <!-- ==================== ★ リッチ検索エリア（Inspect風） ==================== -->
+    <div class="relative z-20 mb-6">
+        <!-- 検索入力ボックス -->
+        <div class="flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full focus-within:ring-2 focus-within:ring-blue-200 focus-within:border-blue-500 focus-within:bg-white dark:focus-within:bg-gray-800 transition">
+            <span class="text-gray-500 dark:text-gray-400 text-lg">🔍</span>
+            <input id="placeSearch" type="search" placeholder="場所ややりたいことを検索" autocomplete="off" onkeyup="searchPosts()"
+                   class="w-full bg-transparent border-0 outline-none text-sm text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400">
+        </div>
+
+        <!-- 検索チップパネル（タップで展開） -->
+        <div id="searchPanel" class="search-panel absolute left-0 right-0 top-12 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl z-30">
+            <p class="text-xs font-bold text-gray-500 dark:text-gray-400 mb-3">人気のキーワード（複数選択可）</p>
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button class="search-chip px-3 py-1.5 border border-gray-300 rounded-full text-xs font-medium text-gray-700 bg-white" type="button" data-term="絶景">🏞️ 絶景</button>
+                <button class="search-chip px-3 py-1.5 border border-gray-300 rounded-full text-xs font-medium text-gray-700 bg-white" type="button" data-term="カフェ">☕ カフェ</button>
+                <button class="search-chip px-3 py-1.5 border border-gray-300 rounded-full text-xs font-medium text-gray-700 bg-white" type="button" data-term="夜景">🌃 夜景</button>
+                <button class="search-chip px-3 py-1.5 border border-gray-300 rounded-full text-xs font-medium text-gray-700 bg-white" type="button" data-term="駐車場が広い">🅿️ 駐車場が広い</button>
+                <button class="search-chip px-3 py-1.5 border border-gray-300 rounded-full text-xs font-medium text-gray-700 bg-white" type="button" data-term="季節もの">🍁 季節もの</button>
+                <button class="search-chip px-3 py-1.5 border border-gray-300 rounded-full text-xs font-medium text-gray-700 bg-white" type="button" data-term="空いている">✨ 空いている</button>
+            </div>
+            <button id="searchSubmit" class="w-full py-2.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-bold rounded-full transition active:scale-95">
+                この条件で絞り込む
+            </button>
+        </div>
+    </div>
+
+    <!-- ==================== ★ AIからのアドバイス（Inspect風） ==================== -->
+    <div id="aiAdviceArea" class="mb-6 p-4 bg-blue-50 dark:bg-indigo-900/40 border border-blue-100 dark:border-indigo-800 rounded-2xl">
+        <strong class="text-blue-700 dark:text-indigo-300 text-xs flex items-center gap-1.5 mb-1.5">
+            <span>✨</span> AIからのアドバイス
+        </strong>
+        <p id="aiAdvice" class="text-gray-700 dark:text-gray-300 text-xs leading-relaxed">
+            上の検索窓から気になるキーワードを選んでみてください。今のあなたにピッタリの場所をタイムラインから絞り込みます。
+        </p>
+    </div>
+
+    <!-- ==================== タイムライン（投稿リスト） ==================== -->
+    <div class="flex items-center justify-between mb-4">
+        <h1 class="text-lg font-bold text-gray-900 dark:text-white">新着の投稿</h1>
+        <span id="recommendationStatus" class="text-xs text-gray-500 dark:text-gray-400">すべて表示中</span>
+    </div>
+
+    <div id="timeline-list" class="space-y-4">
+        {% for post in posts %}
+        <article class="post-card p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm" 
+                 data-following="{{ post.is_following|yesno:'true,false' }}">
+            
+            <!-- ユーザー情報とフォローボタン -->
+            <div class="flex justify-between items-start mb-3">
+                <a href="{% url 'profile' post.user.username|default:'guest' %}" class="flex items-center gap-2">
+                    <div class="w-10 h-10 rounded-full bg-neutral-800 text-white font-bold flex items-center justify-center text-sm shrink-0">
+                        {{ post.user_initial }}
+                    </div>
+                    <div>
+                        <p class="font-bold text-sm text-gray-900 dark:text-white leading-tight">@{{ post.user.username|default:"ゲスト" }}</p>
+                        <p class="text-[10px] text-gray-500 mt-0.5">{{ post.created_at|date:"n月j日 H:i" }}</p>
+                    </div>
+                </a>
+
+                {% if user.is_authenticated and post.user != user %}
+                <button onclick="togglePostFollow(this, '{{ post.user.username }}')" 
+                        class="text-[10px] px-3 py-1 rounded-full font-bold transition cursor-pointer 
+                               {% if post.is_following %}
+                               bg-gray-100 text-gray-800 border border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600
+                               {% else %}
+                               bg-neutral-900 text-white border border-neutral-900 dark:bg-gray-100 dark:text-gray-900
+                               {% endif %}">
+                    {% if post.is_following %}フォロー中{% else %}＋ フォロー{% endif %}
+                </button>
+                {% endif %}
+            </div>
+
+            <!-- スポット名とタグ -->
+            <a href="{% url 'map' %}?lat={{ post.latitude }}&lng={{ post.longitude }}&spot={{ post.id }}" class="inline-block font-bold text-[15px] text-blue-600 dark:text-blue-400 mb-2">
+                📍 {{ post.spot_name }}
+            </a>
+
+            <div class="flex flex-wrap gap-1.5 mb-2.5">
+                <span class="text-[10px] px-2 py-0.5 rounded font-bold bg-neutral-800 text-white">{{ post.mobility_label }}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded font-bold bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-900 dark:text-teal-300 dark:border-teal-800">{{ post.category_label }}</span>
+                {% for tag in post.sub_tags %}
+                <span class="text-[10px] px-2 py-0.5 rounded font-bold bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-300">#{{ tag }}</span>
+                {% endfor %}
+            </div>
+
+            <!-- 本文 -->
+            <p class="text-sm text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line mb-3">{{ post.content }}</p>
+
+            <!-- 画像（あれば） -->
+            {% if post.first_image_url %}
+            <div class="rounded-xl overflow-hidden max-h-56 mb-3 border border-gray-100 dark:border-gray-700">
+                <img src="{{ post.first_image_url }}" alt="{{ post.spot_name }}" class="w-full h-full object-cover">
+            </div>
+            {% endif %}
+
+            <!-- いいね・コメント等のアクション -->
+            <div class="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
+                <div class="flex gap-4">
+                    <button class="flex items-center gap-1.5 active:scale-90 transition">
+                        <span class="text-lg">💬</span><span>{{ post.comments }}</span>
+                    </button>
+                    <button onclick="toggleCount(this)" class="flex items-center gap-1.5 active:scale-90 transition">
+                        <span class="text-lg">❤️</span><span class="count-num">{{ post.likes }}</span>
+                    </button>
+                </div>
+                <a href="{% url 'map' %}?lat={{ post.latitude }}&lng={{ post.longitude }}&spot={{ post.id }}" 
+                   class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-[11px] active:bg-gray-200 transition">
+                    🗺️ マップで見る
+                </a>
+            </div>
+        </article>
+        {% empty %}
+        <div class="p-10 text-center text-gray-500 text-sm">
+            投稿がまだありません。<br>右下のボタンから最初の投稿をしてみましょう！
+        </div>
+        {% endfor %}
+
+        <div id="empty-following-msg" class="hidden p-10 text-center text-gray-500 text-sm bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+            フォロー中のユーザーの投稿がまだありません。<br>
+            「おすすめ」タブから気になるユーザーをフォローしてみましょう！
+        </div>
+    </div>
+</div>
+
+<!-- ==================== JS処理 ==================== -->
+<script>
+    // CSRFトークン取得
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    // --- 検索（Inspect風）の処理 ---
+    const searchInput = document.getElementById('placeSearch');
+    const searchPanel = document.getElementById('searchPanel');
+    const searchSubmit = document.getElementById('searchSubmit');
+    const statusText = document.getElementById('recommendationStatus');
+    const aiAdvice = document.getElementById('aiAdvice');
+
+    // 検索窓フォーカスでパネルを開く
+    searchInput.addEventListener('focus', () => searchPanel.classList.add('visible'));
+
+    // 画面外タップでパネルを閉じる
+    document.addEventListener('click', (e) => {
+        if (!searchInput.contains(e.target) && !searchPanel.contains(e.target)) {
+            searchPanel.classList.remove('visible');
+        }
+    });
+
+    // チップの選択/解除
+    document.querySelectorAll('.search-chip').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            chip.classList.toggle('is-selected');
+            updateSearchInputFromChips();
+        });
+    });
+
+    function updateSearchInputFromChips() {
+        const selected = [...document.querySelectorAll('.search-chip.is-selected')].map((item) => item.dataset.term);
+        searchInput.value = selected.join(' '); // 半角スペース区切り
+    }
+
+    // 絞り込むボタン押下時
+    searchSubmit.addEventListener('click', () => {
+        searchPanel.classList.remove('visible');
+        searchPosts();
+        updateAiAdvice();
+    });
+
+    // 投稿のフィルタリング実行
+    function searchPosts() {
+        const q = searchInput.value.toLowerCase();
+        let visibleCount = 0;
+        
+        document.querySelectorAll('.post-card').forEach(card => {
+            const isMatchQuery = card.innerText.toLowerCase().includes(q);
+            const isMatchFeed = (currentFeedTab === 'timeline' || card.dataset.following === 'true');
+            
+            if (isMatchQuery && isMatchFeed) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        statusText.textContent = q ? `「${q}」の検索結果` : 'すべて表示中';
+        
+        // フォロー中タブで空の場合のメッセージ
+        if (currentFeedTab === 'following' && visibleCount === 0 && q === '') {
+            document.getElementById('empty-following-msg').classList.remove('hidden');
+        } else {
+            document.getElementById('empty-following-msg').classList.add('hidden');
+        }
+    }
+
+    // AIアドバイス文の更新
+    function updateAiAdvice() {
+        const q = searchInput.value.trim();
+        if (q) {
+            aiAdvice.innerHTML = `「<strong class="text-blue-600 dark:text-blue-400">${q}</strong>」に関する投稿を絞り込みました。<br>気になる場所があれば、右下の「マップで見る」から詳細やルートを確認できます！`;
+        } else {
+            aiAdvice.innerText = "上の検索窓から気になるキーワードを選んでみてください。今のあなたにピッタリの場所をタイムラインから絞り込みます。";
+        }
+    }
+
+    // --- タブ切り替え（おすすめ / フォロー中） ---
+    let currentFeedTab = 'timeline';
+    function switchFeedTab(tabType, btn) {
+        currentFeedTab = tabType;
+        document.querySelectorAll('.feed-tab').forEach(el => el.classList.remove('active'));
+        btn.classList.add('active');
+        searchPosts(); // タブを切り替えた上で再検索（フィルタリング）
+    }
+
+    // --- フォロー機能 ---
+    async function togglePostFollow(btn, targetUsername) {
+        btn.disabled = true;
+        try {
+            const response = await fetch(`/api/toggle_follow/${targetUsername}/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') }
+            });
+            const data = await response.json();
+            
+            if (data.status === 'ok') {
+                const card = btn.closest('.post-card');
+                if (data.is_following) {
+                    btn.innerText = 'フォロー中';
+                    btn.className = 'text-[10px] px-3 py-1 rounded-full font-bold transition cursor-pointer bg-gray-100 text-gray-800 border border-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600';
+                    card.dataset.following = 'true';
+                } else {
+                    btn.innerText = '＋ フォロー';
+                    btn.className = 'text-[10px] px-3 py-1 rounded-full font-bold transition cursor-pointer bg-neutral-900 text-white border border-neutral-900 dark:bg-gray-100 dark:text-gray-900';
+                    card.dataset.following = 'false';
+                }
+                searchPosts(); // 状態が変わったので再描画
+            }
+        } catch (error) {
+            alert('通信エラーが発生しました。');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // --- いいねアクション ---
+    function toggleCount(btn) {
+        const numSpan = btn.querySelector('.count-num');
+        let count = parseInt(numSpan.innerText, 10);
+        if (btn.dataset.liked === 'true') {
+            numSpan.innerText = count - 1;
+            btn.dataset.liked = 'false';
+            btn.classList.remove('text-pink-600', 'scale-110');
+        } else {
+            numSpan.innerText = count + 1;
+            btn.dataset.liked = 'true';
+            btn.classList.add('text-pink-600', 'scale-110');
+        }
+    }
+</script>
+{% endblock %}
