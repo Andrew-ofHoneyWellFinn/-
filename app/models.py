@@ -180,3 +180,23 @@ class SiteSetting(models.Model):
 
     def __str__(self):
         return 'サイト設定'
+    
+# ===============================================
+# ★ 追加：コメントを管理するモデル
+# ===============================================
+class Comment(models.Model):
+    # どの投稿へのコメントか
+    post = models.ForeignKey(Post, related_name='post_comments', on_delete=models.CASCADE, verbose_name='対象の投稿')
+    # 誰がコメントしたか
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='コメントしたユーザー')
+    # コメント内容
+    text = models.TextField("コメント内容", max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='コメント日時')
+
+    class Meta:
+        ordering = ['created_at'] # 古い順（チャットアプリのような順番）に並べる
+        verbose_name = 'コメント'
+        verbose_name_plural = 'コメント一覧'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.post.spot_name}へのコメント"

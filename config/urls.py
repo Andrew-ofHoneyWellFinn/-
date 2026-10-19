@@ -48,6 +48,7 @@ urlpatterns = [
     path('api/follow_list/<str:username>/<str:list_type>/', views.get_follow_list_api, name='get_follow_list_api'),
     path('api/toggle_follow/<str:username>/', views.toggle_follow_api, name='toggle_follow_api'),
     path('ai_chat/', views.ai_chat_view, name='ai_chat'),
+    path('api/posts/<int:post_id>/comments/', views.post_comments_api, name='post_comments_api'),
 ]
 
 # ==========================================

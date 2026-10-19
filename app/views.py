@@ -16,7 +16,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.conf import settings # ★追加：settings.pyからAPIキーを取得するため
 from google import genai
 
-from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow
+# ★ 修正：Commentモデルをimportに追加（※models.pyにCommentを作成している前提）
+from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow, Comment
 from .forms import ContactForm, SignUpForm
 
 
@@ -138,7 +139,8 @@ def timeline_view(request):
         post.mobility_label = post.get_mobility_display()
         post.likes = 0
         post.wants = 0
-        post.comments = 0
+        # ★ 修正：実際のコメント数を取得
+        post.comments = post.post_comments.count()
 
         # この投稿をした人を自分がフォローしているか判定
         post.is_following = False
@@ -201,7 +203,8 @@ def profile_view(request, username):
         post.mobility_label = post.get_mobility_display()
         post.likes = 0
         post.wants = 0
-        post.comments = 0
+        # ★ 修正：実際のコメント数を取得
+        post.comments = post.post_comments.count()
         
         first_image = post.images.first()
         post.first_image_url = first_image.image.url if first_image else ''
@@ -284,6 +287,8 @@ def map_view(request):
             'image_url': image_url,
             'created_at': localtime(new_post.created_at).strftime('%m月%d日 %H:%M'),
             'created_timestamp': int(new_post.created_at.timestamp() * 1000),
+            # 新規投稿時はコメント0件
+            'comments': 0,
         }
         
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -315,6 +320,8 @@ def map_view(request):
             'image_url': first_image.image.url if first_image else '', 
             'created_at': localtime(p.created_at).strftime('%m月%d日 %H:%M'),
             'created_timestamp': int(p.created_at.timestamp() * 1000), 
+            # ★ 修正：実際のコメント数を取得
+            'comments': p.post_comments.count(),
         })
 
     context = {
@@ -547,7 +554,6 @@ def get_follow_list_api(request, username, list_type):
             
     return JsonResponse({'status': 'ok', 'users': users_data})
 
-
 @login_required
 @require_POST
 def toggle_follow_api(request, username):
@@ -573,3 +579,44 @@ def toggle_follow_api(request, username):
         'is_following': is_following,
         'followers_count': followers_count
     })
+
+# ==========================================
+# ★ 追加：投稿に対するコメント取得・送信API
+# ==========================================
+def post_comments_api(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    
+    if request.method == 'POST':
+        if not request.user.is_authenticated:
+            return JsonResponse({'status': 'error', 'message': 'ログインが必要です'}, status=403)
+            
+        try:
+            data = json.loads(request.body)
+            text = data.get('text', '').strip()
+            if text:
+                Comment.objects.create(post=post, user=request.user, text=text)
+                return JsonResponse({'status': 'ok', 'comments_count': post.post_comments.count()})
+            return JsonResponse({'status': 'error', 'message': 'コメントが空です'}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    elif request.method == 'GET':
+        comments = post.post_comments.all().select_related('user__profile')
+        comments_data = []
+        for c in comments:
+            avatar_url = ''
+            if hasattr(c.user, 'profile') and c.user.profile.avatar:
+                avatar_url = c.user.profile.avatar.url
+            
+            comments_data.append({
+                'id': c.id,
+                'username': c.user.username,
+                'initial': c.user.username[0].upper(),
+                'avatar_url': avatar_url,
+                'text': c.text,
+                'created_at': localtime(c.created_at).strftime('%m/%d %H:%M'),
+                'is_mine': request.user.is_authenticated and c.user == request.user
+            })
+        return JsonResponse({'status': 'ok', 'comments': comments_data})
+        
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
