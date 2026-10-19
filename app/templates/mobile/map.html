@@ -356,6 +356,7 @@
         updateMarkersVisibility();
     }
 
+
     const AREA_DEFINITIONS = {
         okayama_city: { name: '🏙️ 岡山・駅前エリア', lat: 34.6655, lng: 133.9180 },
         kurashiki: { name: '🏘️ 倉敷・美観地区エリア', lat: 34.5833, lng: 133.7719 },
@@ -399,6 +400,66 @@
             map.setZoom(16);
             closeSpotDetailModal();
         }
+    }
+
+    // ★いいね処理
+    async function toggleLike(postId) {
+        try {
+            const res = await fetch(`/api/posts/${postId}/like/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie("csrftoken") }
+            });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                const marker = spotMarkers.find(m => m.data.id === postId);
+                if (marker) {
+                    marker.data.is_liked = data.is_liked;
+                    marker.data.likes = data.likes_count;
+                }
+                
+                document.getElementById(`like-icon-${postId}`).innerText = data.is_liked ? '❤️' : '🤍';
+                document.getElementById(`like-count-${postId}`).innerText = data.likes_count;
+                
+                const btn = document.getElementById(`like-btn-${postId}`);
+                if (data.is_liked) {
+                    btn.classList.remove('text-gray-500', 'hover:text-red-500');
+                    btn.classList.add('text-red-500');
+                } else {
+                    btn.classList.remove('text-red-500');
+                    btn.classList.add('text-gray-500', 'hover:text-red-500');
+                }
+            } else {
+                alert(data.message);
+            }
+        } catch (e) { alert('エラーが発生しました'); }
+    }
+
+    // ★ブックマーク処理
+    async function toggleBookmark(postId) {
+        try {
+            const res = await fetch(`/api/posts/${postId}/bookmark/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie("csrftoken") }
+            });
+            const data = await res.json();
+            if (data.status === 'ok') {
+                const marker = spotMarkers.find(m => m.data.id === postId);
+                if (marker) { marker.data.is_bookmarked = data.is_bookmarked; }
+                
+                document.getElementById(`bookmark-icon-${postId}`).innerText = data.is_bookmarked ? '📑' : '🔖';
+                
+                const btn = document.getElementById(`bookmark-btn-${postId}`);
+                if (data.is_bookmarked) {
+                    btn.classList.remove('text-gray-500', 'hover:text-green-500');
+                    btn.classList.add('text-green-500');
+                } else {
+                    btn.classList.remove('text-green-500');
+                    btn.classList.add('text-gray-500', 'hover:text-green-500');
+                }
+            } else {
+                alert(data.message);
+            }
+        } catch (e) { alert('エラーが発生しました'); }
     }
 
     async function openCommentModal(postId) {
@@ -511,6 +572,9 @@
         const naviUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
         const profileUrl = `/profile/${s.username}/`;
 
+        const likeColorClass = s.is_liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500';
+        const bookmarkColorClass = s.is_bookmarked ? 'text-green-500' : 'text-gray-500 hover:text-green-500';
+
         return `
             <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 ${isMain ? 'mb-4 rounded-2xl shadow-sm border' : ''}" ${isMain ? '' : `onclick="jumpToSpotOnMap(${s.lat}, ${s.lng},${s.id})"`}>
                 
@@ -552,11 +616,12 @@
                         <button class="flex items-center gap-1.5 text-gray-500 hover:text-blue-500 transition" onclick="event.stopPropagation(); openCommentModal(${s.id})">
                             <span class="text-lg">💬</span><span class="text-xs font-bold" id="comment-count-${s.id}">${s.comments || 0}</span>
                         </button>
-                        <button class="flex items-center gap-1.5 text-gray-500 hover:text-red-500 transition" onclick="event.stopPropagation(); alert('いいねしました！')">
-                            <span class="text-lg">🤍</span><span class="text-xs font-bold">${s.likes || 0}</span>
+                        <button id="like-btn-${s.id}" class="flex items-center gap-1.5 transition ${likeColorClass}" onclick="event.stopPropagation(); toggleLike(${s.id})">
+                            <span class="text-lg" id="like-icon-${s.id}">${s.is_liked ? '❤️' : '🤍'}</span>
+                            <span class="text-xs font-bold" id="like-count-${s.id}">${s.likes || 0}</span>
                         </button>
-                        <button class="flex items-center gap-1.5 text-gray-500 hover:text-green-500 transition" onclick="event.stopPropagation(); alert('ブックマークしました！')">
-                            <span class="text-lg">🔖</span>
+                        <button id="bookmark-btn-${s.id}" class="flex items-center gap-1.5 transition ${bookmarkColorClass}" onclick="event.stopPropagation(); toggleBookmark(${s.id})">
+                            <span class="text-lg" id="bookmark-icon-${s.id}">${s.is_bookmarked ? '📑' : '🔖'}</span>
                         </button>
                     </div>
                     ${isMain ? `
@@ -586,11 +651,8 @@
         }
 
         sMarker.addListener('click', () => {
-            // ★追加：ピンをクリックしたときに音を鳴らす
             pinDropSound.currentTime = 0; 
-            pinDropSound.play().catch(e => {
-                // ブラウザの仕様で音が鳴らせない場合（ユーザーアクション前など）は無視
-            });
+            pinDropSound.play().catch(e => {});
 
             document.getElementById('detailSpotName').innerText = spot.spot_name;
 

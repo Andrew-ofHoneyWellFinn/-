@@ -16,8 +16,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.conf import settings # ★追加：settings.pyからAPIキーを取得するため
 from google import genai
 
-# ★ 修正：Commentモデルをimportに追加（※models.pyにCommentを作成している前提）
-from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow, Comment
+# ★ 修正：Like, Bookmark モデルをimportに追加
+from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow, Comment, Like, Bookmark
 from .forms import ContactForm, SignUpForm
 
 
@@ -137,9 +137,11 @@ def timeline_view(request):
         post.user_initial = post.user.username[0].upper() if post.user else 'G'
         post.category_label = post.get_category_display()
         post.mobility_label = post.get_mobility_display()
-        post.likes = 0
-        post.wants = 0
-        # ★ 修正：実際のコメント数を取得
+        
+        # ★ 修正：いいね数・ブックマーク状態・コメント数を取得
+        post.likes = post.post_likes.count()
+        post.is_liked = post.post_likes.filter(user=request.user).exists() if request.user.is_authenticated else False
+        post.is_bookmarked = post.post_bookmarks.filter(user=request.user).exists() if request.user.is_authenticated else False
         post.comments = post.post_comments.count()
 
         # この投稿をした人を自分がフォローしているか判定
@@ -201,9 +203,11 @@ def profile_view(request, username):
         post.user_initial = post.user.username[0].upper() if post.user else 'G'
         post.category_label = post.get_category_display()
         post.mobility_label = post.get_mobility_display()
-        post.likes = 0
-        post.wants = 0
-        # ★ 修正：実際のコメント数を取得
+        
+        # ★ 修正：いいね数・ブックマーク状態・コメント数を取得
+        post.likes = post.post_likes.count()
+        post.is_liked = post.post_likes.filter(user=request.user).exists() if request.user.is_authenticated else False
+        post.is_bookmarked = post.post_bookmarks.filter(user=request.user).exists() if request.user.is_authenticated else False
         post.comments = post.post_comments.count()
         
         first_image = post.images.first()
@@ -287,8 +291,11 @@ def map_view(request):
             'image_url': image_url,
             'created_at': localtime(new_post.created_at).strftime('%m月%d日 %H:%M'),
             'created_timestamp': int(new_post.created_at.timestamp() * 1000),
-            # 新規投稿時はコメント0件
+            # ★ 修正：新規投稿時はコメント・いいね等は初期状態
             'comments': 0,
+            'likes': 0,
+            'is_liked': False,
+            'is_bookmarked': False,
         }
         
         if request.headers.get('x-requested-with') == 'XMLHttpRequest':
@@ -320,17 +327,18 @@ def map_view(request):
             'image_url': first_image.image.url if first_image else '', 
             'created_at': localtime(p.created_at).strftime('%m月%d日 %H:%M'),
             'created_timestamp': int(p.created_at.timestamp() * 1000), 
-            # ★ 修正：実際のコメント数を取得
+            # ★ 修正：実際のコメント・いいね・ブックマーク数を取得
             'comments': p.post_comments.count(),
+            'likes': p.post_likes.count(),
+            'is_liked': p.post_likes.filter(user=request.user).exists() if request.user.is_authenticated else False,
+            'is_bookmarked': p.post_bookmarks.filter(user=request.user).exists() if request.user.is_authenticated else False,
         })
 
     context = {
-        # ★settings.pyからAPIキーを取得するように変更
         'api_key': settings.GOOGLE_MAPS_API_KEY,
         'posts': spots_data,
     }
 
-    # ★ スマホとPCでHTMLを出し分ける
     if getattr(request, 'user_agent', None) and request.user_agent.is_mobile:
         return render(request, 'mobile/map.html', context)
     return render(request, 'map.html', context)
@@ -398,27 +406,24 @@ def ai_suggest_view(request):
            ※ [lat]、[lng]、[ID] の部分は、選んだスポットの実際の数値に置き換えてください。
         """
         
-        # ★ settings.pyからAPIキーを取得
         gemini_api_key = getattr(settings, 'GEMINI_API_KEY', None)
         if not gemini_api_key:
             return JsonResponse({'status': 'error', 'message': 'APIキーが設定されていません。'}, status=500)
 
         client = genai.Client(api_key=gemini_api_key)
         
-        # ★ 混雑時のAPIリトライ機能（最大3回）
         max_retries = 3
         ai_html_answer = ""
         for attempt in range(max_retries):
             try:
                 response = client.models.generate_content(
-                    model="gemini-3.6-flash", # 混雑を避けるため1.5-flashを指定
+                    model="gemini-3.6-flash",
                     contents=prompt
                 )
                 ai_html_answer = response.text
                 break
             except Exception as e:
                 if attempt < max_retries - 1:
-                    print(f"Gemini API 混雑のため再試行します (試行 {attempt + 1}/{max_retries})")
                     time.sleep(2)
                 else:
                     raise e
@@ -429,7 +434,6 @@ def ai_suggest_view(request):
         })
 
     except Exception as e:
-        print("Gemini API Error:", str(e))
         return JsonResponse({
             'status': 'error',
             'message': 'AIの呼び出し中にエラーが発生しました。しばらく経ってから再度お試しください。'
@@ -581,7 +585,7 @@ def toggle_follow_api(request, username):
     })
 
 # ==========================================
-# ★ 追加：投稿に対するコメント取得・送信API
+# ★ 投稿に対するコメント取得・送信API
 # ==========================================
 def post_comments_api(request, post_id):
     post = get_object_or_404(Post, id=post_id)
@@ -620,3 +624,36 @@ def post_comments_api(request, post_id):
         return JsonResponse({'status': 'ok', 'comments': comments_data})
         
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+
+# ==========================================
+# ★ 追加：いいね と ブックマークのAPI
+# ==========================================
+@require_POST
+def toggle_like_api(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'ログインが必要です'}, status=403)
+    post = get_object_or_404(Post, id=post_id)
+    like, created = Like.objects.get_or_create(post=post, user=request.user)
+    
+    if not created:
+        like.delete() # すでにいいねしていたら解除
+        is_liked = False
+    else:
+        is_liked = True
+        
+    return JsonResponse({'status': 'ok', 'is_liked': is_liked, 'likes_count': post.post_likes.count()})
+
+@require_POST
+def toggle_bookmark_api(request, post_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'ログインが必要です'}, status=403)
+    post = get_object_or_404(Post, id=post_id)
+    bookmark, created = Bookmark.objects.get_or_create(post=post, user=request.user)
+    
+    if not created:
+        bookmark.delete() # すでにブックマークしていたら解除
+        is_bookmarked = False
+    else:
+        is_bookmarked = True
+        
+    return JsonResponse({'status': 'ok', 'is_bookmarked': is_bookmarked})

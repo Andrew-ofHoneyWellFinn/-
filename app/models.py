@@ -200,3 +200,28 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.post.spot_name}へのコメント"
+    
+# ===============================================
+# ★ 追加：いいねとブックマークを管理するモデル
+# ===============================================
+class Like(models.Model):
+    post = models.ForeignKey(Post, related_name='post_likes', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user') # 1人1回まで
+
+    def __str__(self):
+        return f"{self.user.username} likes {self.post.spot_name}"
+
+class Bookmark(models.Model):
+    post = models.ForeignKey(Post, related_name='post_bookmarks', on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('post', 'user') # 1人1回まで
+
+    def __str__(self):
+        return f"{self.user.username} bookmarked {self.post.spot_name}"

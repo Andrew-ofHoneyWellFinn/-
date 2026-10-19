@@ -49,6 +49,8 @@ urlpatterns = [
     path('api/toggle_follow/<str:username>/', views.toggle_follow_api, name='toggle_follow_api'),
     path('ai_chat/', views.ai_chat_view, name='ai_chat'),
     path('api/posts/<int:post_id>/comments/', views.post_comments_api, name='post_comments_api'),
+    path('api/posts/<int:post_id>/like/', views.toggle_like_api, name='toggle_like_api'),
+    path('api/posts/<int:post_id>/bookmark/', views.toggle_bookmark_api, name='toggle_bookmark_api'),
 ]
 
 # ==========================================
