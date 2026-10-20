@@ -5,43 +5,49 @@
 {% block extra_head %}
 <style>
     /* 画面全体のカードデザイン */
-    .auth-container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 450px; margin: 50px auto; box-sizing: border-box; }
-    .auth-title { margin-top: 0; color: #333; text-align: center; font-size: 24px; margin-bottom: 24px; font-weight: bold; }
+    .auth-container { background: #fffdf7; padding: clamp(28px, 5vw, 48px); border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); width: calc(100% - 32px); max-width: 520px; margin: 56px auto; box-sizing: border-box; }
+    .auth-title { margin-top: 0; color: var(--ink); text-align: center; font-size: 30px; letter-spacing: .03em; margin-bottom: 30px; font-weight: 800; }
     
     /* 入力グループのスタイル */
     .auth-group { margin-bottom: 20px; }
-    .auth-group label { display: block; font-size: 14px; font-weight: bold; color: #333; margin-bottom: 8px; }
+    .auth-group label { display: block; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
     
     /* 入力枠とアイコンを重ねるためのラッパー */
     .input-wrapper { position: relative; display: flex; align-items: center; }
-    .input-wrapper input { width: 100%; padding: 12px; padding-right: 40px; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; box-sizing: border-box; transition: border-color 0.2s; }
-    .input-wrapper input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26,115,232,0.2); }
+    .input-wrapper input { width: 100%; padding: 13px 14px; padding-right: 40px; border: 1px solid #c8d5cf; border-radius: 11px; background: #fff; color: var(--ink); font-size: 16px; box-sizing: border-box; transition: border-color 0.2s, box-shadow 0.2s; }
+    .input-wrapper input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(20,125,115,0.14); }
     
     /* 南京錠アイコン */
     .toggle-icon { position: absolute; right: 12px; cursor: pointer; font-size: 18px; user-select: none; color: #666; transition: transform 0.1s; }
     .toggle-icon:active { transform: scale(0.9); }
     
     /* ヘルプテキスト（箇条書きの黒丸「・」を確実に表示する設定を追加） */
-    .help-text { font-size: 11px; color: #777; margin-top: 6px; display: block; line-height: 1.5; }
+    .help-text { font-size: 11px; color: var(--ink-soft); margin-top: 7px; display: block; line-height: 1.5; }
     .help-text ul { list-style-type: disc; padding-left: 20px; margin-top: 4px; margin-bottom: 0; }
     
     /* エラーのスタイル */
     .errorlist { color: #EA4335; font-size: 12px; padding-left: 0; list-style: none; margin-top: 5px; margin-bottom: 0; font-weight: bold; }
     
     /* 新規登録ボタン */
-    .btn-auth { width: 100%; padding: 14px; background-color: #1a73e8; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 10px; transition: background 0.2s; }
-    .btn-auth:hover { background-color: #1557b0; }
+    .btn-auth { width: 100%; padding: 14px; background-color: var(--coral); color: white; border: none; border-radius: 11px; font-weight: 800; font-size: 16px; cursor: pointer; margin-top: 10px; transition: background 0.2s, transform 0.2s; }
+    .btn-auth:hover { background-color: #d96251; transform: translateY(-1px); }
     
     /* ログイン画面へのリンク */
     .auth-links { text-align: center; margin-top: 24px; font-size: 14px; }
-    .auth-links a { color: #1a73e8; text-decoration: none; font-weight: bold; }
+    .auth-links a { color: var(--teal); text-decoration: none; font-weight: 800; }
     .auth-links a:hover { text-decoration: underline; }
-    .policy-section { margin: 24px 0 18px; padding: 14px; border: 1px solid #ddd; border-radius: 4px; background: #fafafa; }
-    .policy-section h3 { margin: 0 0 8px; color: #333; font-size: 15px; }
-    .policy-section p { margin: 0; color: #555; font-size: 12px; line-height: 1.7; }
+    .policy-section { margin: 24px 0 18px; padding: 17px; border: 1px solid #cfe0d6; border-radius: 14px; background: #edf5ee; }
+    .policy-section h3 { margin: 0 0 8px; color: var(--teal-deep); font-size: 15px; }
+    .policy-section p { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
     .agreement-group { margin: 18px 0 8px; }
     .agreement-label { display: flex !important; align-items: flex-start; gap: 8px; font-weight: normal !important; line-height: 1.5; }
     .agreement-label input { width: 18px; height: 18px; flex: 0 0 auto; margin: 0; }
+    html.dark .auth-container { background: #173b3a; }
+    html.dark .auth-title, html.dark .auth-group label { color: #edf5ee; }
+    html.dark .input-wrapper input { background: #102c2b; border-color: #4d7771; color: #edf5ee; }
+    html.dark .policy-section { background: #245451; border-color: #3e716b; }
+    html.dark .policy-section h3 { color: #b9e4d1; }
+    html.dark .policy-section p, html.dark .help-text { color: #d1e3d8; }
 </style>
 {% endblock %}
 

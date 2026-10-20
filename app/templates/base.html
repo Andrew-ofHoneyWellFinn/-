@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- 各ページのタイトルがここに入る -->
     <title>{% block title %}マッピン{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 各ページ専用の <style> や <script> がここに入る -->
     {% block extra_head %}{% endblock %}
@@ -44,37 +47,75 @@
     </script>
 
     <style>
-        /* アプリ全体の基本となるダーク背景色 */
-        html.dark body { background-color: #111827; color: #f3f4f6; }
+        :root {
+            --ink: #173b3a;
+            --ink-soft: #55706d;
+            --paper: #f6f4ed;
+            --paper-deep: #e9eee7;
+            --teal: #147d73;
+            --teal-deep: #0e5d59;
+            --coral: #ef765e;
+            --line: rgba(23, 59, 58, 0.14);
+            --shadow: 0 18px 45px rgba(24, 63, 59, 0.12);
+        }
+
+        * { box-sizing: border-box; }
+        html, body { min-height: 100%; }
+        body { font-family: 'M PLUS Rounded 1c', sans-serif; background: var(--paper); color: var(--ink); }
+        body::before { position: fixed; inset: 0; z-index: -1; pointer-events: none; content: ''; opacity: .5; background-image: linear-gradient(115deg, transparent 0 48%, rgba(20,125,115,.045) 48.2% 48.7%, transparent 48.9%), linear-gradient(25deg, transparent 0 70%, rgba(239,118,94,.035) 70.2% 70.7%, transparent 70.9%); background-size: 260px 220px, 320px 280px; }
+        main { min-height: calc(100vh - 76px); }
+        html.dark body { background: #102c2b; color: #edf5ee; }
+        html.dark body::before { opacity: .2; }
+
+        .site-header { min-height: 76px; padding: 14px clamp(18px, 4vw, 64px); background: rgba(23, 59, 58, .97); border-bottom: 3px solid var(--coral); box-shadow: 0 8px 24px rgba(13, 49, 47, .16); }
+        .site-logo { color: #fff; font-size: 21px; letter-spacing: .04em; }
+        .site-logo-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 11px 11px 11px 3px; background: var(--coral); box-shadow: 4px 4px 0 rgba(255,255,255,.12); font-size: 17px; }
+        .header-actions { gap: 8px; }
+        .header-nav-link { display: inline-flex; min-height: 38px; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid rgba(255,255,255,.18); border-radius: 10px; color: #e9f4ed; font-size: 13px; font-weight: 700; text-decoration: none; transition: background .2s, transform .2s; }
+        .header-nav-link:hover { background: rgba(255,255,255,.13); transform: translateY(-1px); }
+        .header-nav-link.active { background: var(--teal); border-color: var(--teal); }
+        .header-user { color: #c7ddd3; font-size: 13px; font-weight: 700; }
+        .header-guest-link { border-color: rgba(255,255,255,.42); }
+        .header-guest-link.primary { background: var(--coral); border-color: var(--coral); color: #fff; }
+        .header-guest-link.primary:hover { background: #f58b75; }
+
         .settings-menu { position: relative; }
-        .settings-menu summary { list-style: none; cursor: pointer; font-size: 20px; line-height: 1; padding: 6px; border-radius: 4px; }
+        .settings-menu summary { list-style: none; cursor: pointer; font-size: 19px; line-height: 1; padding: 7px; border: 1px solid rgba(255,255,255,.18); border-radius: 10px; }
         .settings-menu summary::-webkit-details-marker { display: none; }
         .settings-menu summary:hover { background: rgba(255,255,255,0.12); }
-        .settings-panel { position: absolute; right: 0; top: calc(100% + 8px); width: 210px; padding: 6px; background: white; border: 1px solid #e5e7eb; border-radius: 6px; box-shadow: 0 8px 20px rgba(0,0,0,0.18); }
+        .settings-panel { position: absolute; right: 0; top: calc(100% + 10px); width: 220px; padding: 7px; background: #fffdf7; border: 1px solid var(--line); border-radius: 13px; box-shadow: var(--shadow); }
         .settings-panel a, .settings-panel button { display: block; width: 100%; padding: 10px 12px; color: #374151; text-align: left; text-decoration: none; background: transparent; border: 0; border-radius: 4px; font-size: 14px; cursor: pointer; box-sizing: border-box; }
-        .settings-panel a:hover, .settings-panel button:hover { background: #f3f4f6; }
-        .settings-panel .danger { color: #dc2626; }
-        html.dark .settings-panel { background: #1f2937; border-color: #374151; }
+        .settings-panel a:hover, .settings-panel button:hover { background: #e9f1ea; }
+        .settings-panel .danger { color: #cf5549; }
+        html.dark .settings-panel { background: #173b3a; border-color: rgba(255,255,255,.18); }
         html.dark .settings-panel a, html.dark .settings-panel button { color: #f3f4f6; }
-        html.dark .settings-panel a:hover, html.dark .settings-panel button:hover { background: #374151; }
+        html.dark .settings-panel a:hover, html.dark .settings-panel button:hover { background: #245451; }
+        @media (max-width: 720px) {
+            .site-header { min-height: 68px; padding: 11px 14px; }
+            .site-logo { font-size: 18px; }
+            .site-logo-mark { width: 30px; height: 30px; }
+            .header-user { display: none; }
+            .header-actions { gap: 5px; }
+            .header-nav-link { padding: 7px 9px; font-size: 12px; }
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col text-gray-800">
+<body class="site-body min-h-screen flex flex-col">
 
     <!-- 上部ヘッダー（PC用固定ナビゲーションバー） -->
-    <header class="sticky top-0 z-50 bg-neutral-800 text-white px-6 py-3 flex justify-between items-center shadow-md">
+    <header class="site-header sticky top-0 z-50 text-white flex justify-between items-center">
         <!-- 左側：ロゴボタン（ログイン中はSNS画面、未ログイン時はタイトル画面へ） -->
-        <a href="{% if user.is_authenticated %}{% url 'timeline' %}{% else %}{% url 'index' %}{% endif %}" 
-           class="text-xl font-bold tracking-wide flex items-center gap-2 hover:opacity-80 active:scale-95 transition cursor-pointer">
-            <span>📍</span>
+        <a href="{% if user.is_authenticated %}{% url 'timeline' %}{% else %}{% url 'index' %}{% endif %}"
+              class="site-logo font-bold tracking-wide flex items-center gap-2 hover:opacity-80 active:scale-95 transition cursor-pointer">
+                <span class="site-logo-mark">📍</span>
             <span>マッピン</span>
         </a>
 
         <!-- 右側：ナビゲーション＆認証ボタン -->
-        <div class="flex items-center gap-4">
+        <div class="header-actions flex items-center">
             {% if user.is_authenticated %}
                 <div class="flex items-center gap-2">
-                    <span class="text-sm text-gray-300 font-medium">{{ user.username }}さん</span>
+                    <span class="header-user">{{ user.username }}さん</span>
                     <details class="settings-menu">
                         <summary aria-label="設定メニュー" title="設定">⚙️</summary>
                         <div class="settings-panel">
@@ -90,32 +131,24 @@
                 </div>
                 
                 <!-- SNS画面ボタン -->
-                <a href="{% url 'timeline' %}" 
-                   class="text-sm px-4 py-2 rounded font-medium transition cursor-pointer 
-                          {% if request.resolver_match.url_name == 'timeline' %}bg-blue-600 text-white{% else %}bg-neutral-700 hover:bg-neutral-600 text-gray-100{% endif %}">
+                    <a href="{% url 'timeline' %}"
+                         class="header-nav-link {% if request.resolver_match.url_name == 'timeline' %}active{% endif %}">
                     🔥 SNS
                 </a>
                 
                 <!-- マップ画面ボタン -->
-                <a href="{% url 'map' %}" 
-                   class="text-sm px-4 py-2 rounded font-medium transition cursor-pointer 
-                          {% if request.resolver_match.url_name == 'map' %}bg-blue-600 text-white{% else %}bg-neutral-700 hover:bg-neutral-600 text-gray-100{% endif %}">
+                    <a href="{% url 'map' %}"
+                         class="header-nav-link {% if request.resolver_match.url_name == 'map' %}active{% endif %}">
                     🗺️ マップ
                 </a>
                 
                 <!-- ログアウトボタン -->
-                <a href="{% url 'logout' %}" 
-                   class="text-sm px-4 py-2 border border-gray-500 rounded hover:bg-neutral-700 transition cursor-pointer">
-                    ログアウト
-                </a>
             {% else %}
                 <!-- 未ログイン時のボタン -->
-                <a href="{% url 'login' %}" 
-                   class="text-sm px-5 py-2 border border-gray-500 rounded hover:bg-neutral-700 transition cursor-pointer">
+                     <a href="{% url 'login' %}" class="header-nav-link header-guest-link">
                     ログイン
                 </a>
-                <a href="{% url 'signup' %}" 
-                   class="text-sm px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded transition cursor-pointer shadow-sm">
+                     <a href="{% url 'signup' %}" class="header-nav-link header-guest-link primary">
                     新規登録
                 </a>
             {% endif %}

@@ -7,6 +7,24 @@
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+    .timeline-layout { width: min(1320px, calc(100% - 32px)); grid-template-columns: 250px minmax(0, 1fr) 250px; gap: 24px; }
+    .timeline-layout aside .sticky > div { border-color: var(--line); border-radius: 16px; box-shadow: 0 8px 24px rgba(24, 63, 59, .06); background: rgba(255,253,247,.86); }
+    .timeline-layout aside a, .timeline-layout aside button { border-radius: 10px; }
+    .timeline-layout aside .nav-active { background: #dfeee4; color: var(--teal-deep); }
+    .timeline-layout aside .space-y-2\.5 button:first-child { background: var(--coral); box-shadow: 0 8px 16px rgba(239,118,94,.2); border-radius: 12px; }
+    .timeline-layout aside .space-y-2\.5 button:first-child:hover { background: #d96251; }
+    .timeline-layout aside .space-y-2\.5 button:nth-child(2) { background: var(--teal); border-radius: 12px; }
+    .timeline-layout aside .space-y-2\.5 button:nth-child(2):hover { background: var(--teal-deep); }
+    .timeline-layout > section { overflow: hidden; border-color: var(--line); border-radius: 18px; background: rgba(255,253,247,.9); box-shadow: 0 8px 26px rgba(24, 63, 59, .06); }
+    .timeline-layout .feed-tab.active { color: var(--teal-deep); }
+    .timeline-layout .feed-tab.active::after { background: var(--coral); height: 3px; }
+    .timeline-layout .post-card:hover { background: #f0f5ef; }
+    html.dark .timeline-layout aside .sticky > div, html.dark .timeline-layout > section { background: #173b3a; border-color: rgba(255,255,255,.14); }
+    html.dark .timeline-layout aside .nav-active { background: #245451; color: #d8f0e2; }
+    html.dark .timeline-layout .post-card:hover { background: #245451; }
+    @media (max-width: 1100px) { .timeline-layout { grid-template-columns: 210px minmax(0, 1fr); } }
+    @media (max-width: 760px) { .timeline-layout { width: 100%; display: block; } .timeline-layout aside { display: none; } .timeline-layout > section { border-radius: 0; border-left: 0; border-right: 0; } }
+
     /* X風のタブ下線インジケーター */
     .feed-tab {
         position: relative;
@@ -73,7 +91,7 @@
 
 {% block content %}
 <!-- 3カラム全体コンテナ -->
-<div class="max-w-7xl w-full mx-auto flex-grow grid grid-cols-12 gap-6 px-4">
+<div class="timeline-layout max-w-7xl w-full mx-auto flex-grow grid grid-cols-12 gap-6 px-4">
 
     <!-- ==================== 左サイドバー（ナビ＆フィルタ＆アクションボタン） ==================== -->
     <!-- ★ 修正：PC専用なので、hidden md:block のようなクラスを削除しました -->

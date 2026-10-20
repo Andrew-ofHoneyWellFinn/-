@@ -4,14 +4,14 @@
 
 {% block extra_head %}
 <style>
-    .maintenance-settings-container { max-width: 620px; margin: 48px auto; padding: 36px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    .maintenance-settings-title { margin: 0 0 10px; color: #1f2937; font-size: 28px; font-weight: 700; }
+    .maintenance-settings-container { width: calc(100% - 32px); max-width: 680px; margin: 56px auto; padding: clamp(28px, 5vw, 44px); background: #fffdf7; border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); }
+    .maintenance-settings-title { margin: 0 0 10px; color: var(--ink); font-size: 30px; font-weight: 800; }
     .maintenance-settings-description { margin: 0 0 28px; color: #6b7280; line-height: 1.7; }
     .maintenance-toggle { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; color: #374151; font-weight: 700; }
     .maintenance-toggle input { width: 20px; height: 20px; }
-    .maintenance-save { width: 100%; padding: 13px; border: 0; border-radius: 4px; background: #2563eb; color: white; font-size: 16px; font-weight: 700; cursor: pointer; }
-    .maintenance-save:hover { background: #1d4ed8; }
-    html.dark .maintenance-settings-container { background: #1f2937; }
+    .maintenance-save { width: 100%; padding: 14px; border: 0; border-radius: 11px; background: var(--coral); color: white; font-size: 16px; font-weight: 800; cursor: pointer; transition: background .2s, transform .2s; }
+    .maintenance-save:hover { background: #d96251; transform: translateY(-1px); }
+    html.dark .maintenance-settings-container { background: #173b3a; }
     html.dark .maintenance-settings-title, html.dark .maintenance-toggle { color: #f3f4f6; }
     html.dark .maintenance-settings-description { color: #d1d5db; }
 </style>

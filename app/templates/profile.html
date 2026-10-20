@@ -70,12 +70,21 @@
         background-color: #1a73e8;
         border-radius: 9999px;
     }
+
+    .profile-page { width: min(960px, calc(100% - 32px)); }
+    .profile-page > .bg-white { border-color: var(--line); border-radius: 20px; background: rgba(255,253,247,.92); box-shadow: 0 10px 30px rgba(24,63,59,.07); }
+    .profile-page .default-header-bg { background: linear-gradient(120deg, var(--teal-deep), #4ca58b) !important; }
+    .profile-page .follow-tab.active::after { background: var(--coral); height: 3px; }
+    .profile-page button[onclick="openProfileEditModal()"] { border-color: var(--teal) !important; color: var(--teal-deep) !important; border-radius: 11px; }
+    .profile-page button[onclick="openProfileEditModal()"]:hover { background: #e9f1ea !important; }
+    html.dark .profile-page > .bg-white { background: #173b3a; border-color: rgba(255,255,255,.14); }
+    @media (max-width: 600px) { .profile-page { width: 100%; padding-left: 16px; padding-right: 16px; } .profile-page .h-48 { height: 150px; } }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- PC用レイアウト：最大幅を4xlに抑え、中央に1カラムで配置 -->
-<div class="max-w-4xl w-full mx-auto py-6 px-4 min-h-screen">
+<div class="profile-page max-w-4xl w-full mx-auto py-6 px-4 min-h-screen">
     
     <!-- 戻るリンク -->
     <div class="mb-4">

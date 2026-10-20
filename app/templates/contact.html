@@ -4,8 +4,8 @@
 
 {% block extra_head %}
 <style>
-    .contact-container { width: 100%; max-width: 640px; margin: 48px auto; padding: 36px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); box-sizing: border-box; }
-    .contact-title { margin: 0 0 10px; color: #1f2937; font-size: 28px; font-weight: 700; }
+    .contact-container { width: calc(100% - 32px); max-width: 680px; margin: 56px auto; padding: clamp(28px, 5vw, 44px); background: #fffdf7; border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow); box-sizing: border-box; }
+    .contact-title { margin: 0 0 10px; color: var(--ink); font-size: 30px; letter-spacing: .02em; font-weight: 800; }
     .contact-description { margin: 0 0 28px; color: #6b7280; line-height: 1.7; }
     .contact-group { margin-bottom: 20px; }
     .contact-group label { display: block; margin-bottom: 8px; color: #374151; font-size: 14px; font-weight: 700; }
@@ -13,10 +13,10 @@
     .contact-group textarea { min-height: 180px; resize: vertical; }
     .contact-group input:focus, .contact-group textarea:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.15); }
     .errorlist { margin: 6px 0 0; padding: 0; color: #dc2626; list-style: none; font-size: 13px; }
-    .contact-submit { width: 100%; padding: 13px; border: 0; border-radius: 4px; background: #2563eb; color: white; font-size: 16px; font-weight: 700; cursor: pointer; }
-    .contact-submit:hover { background: #1d4ed8; }
+    .contact-submit { width: 100%; padding: 14px; border: 0; border-radius: 11px; background: var(--coral); color: white; font-size: 16px; font-weight: 800; cursor: pointer; transition: background .2s, transform .2s; }
+    .contact-submit:hover { background: #d96251; transform: translateY(-1px); }
     .contact-success { margin-bottom: 24px; padding: 14px; border: 1px solid #86efac; border-radius: 4px; background: #f0fdf4; color: #166534; line-height: 1.6; }
-    html.dark .contact-container { background: #1f2937; }
+    html.dark .contact-container { background: #173b3a; }
     html.dark .contact-title, html.dark .contact-group label { color: #f3f4f6; }
     html.dark .contact-description { color: #d1d5db; }
     html.dark .contact-group input, html.dark .contact-group textarea { background: #111827; border-color: #4b5563; color: #f3f4f6; }
