@@ -138,7 +138,7 @@
 
     <!-- ==================== 右下の投稿（＋）ボタン ==================== -->
     <button type="button" 
-            onclick="if(typeof openPostModal === 'function'){ openPostModal(); } else if(typeof openSpotModal === 'function'){ openSpotModal(typeof originPos !== 'undefined' ? originPos.lat : 34.6655, typeof originPos !== 'undefined' ? originPos.lng : 133.9180, ''); } else { window.location.href='{% url 'timeline' %}'; }" 
+            onclick="if(typeof openSpotModal === 'function'){ openSpotModal(typeof originPos !== 'undefined' ? originPos.lat : 34.6655, typeof originPos !== 'undefined' ? originPos.lng : 133.9180, ''); } else { window.location.href='{% url 'map' %}?action=post'; }" 
             class="post-float-button" aria-label="投稿を作成">
         ＋
     </button>

@@ -5,13 +5,58 @@
 {% block extra_head %}
 <style>
     /* ==============================================================
-       ★ チャット型AI相談画面の専用CSS ★
+       ★ チャット型＆選択型 AI相談画面の専用CSS ★
        ============================================================== */
     /* 背景色をチャットアプリ風にする */
-    html, body { background-color: #f3f4f6; } /* gray-100 */
+    html, body { background-color: #f3f4f6; overflow-x: hidden; } /* gray-100 */
     html.dark body { background-color: #111827; }
 
-    /* チャット吹き出し共通 */
+    /* ================= スワイプ用のコンテナ ================= */
+    .swipe-container {
+        display: flex;
+        width: 100%;
+        height: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none; 
+    }
+    .swipe-container::-webkit-scrollbar {
+        display: none; 
+    }
+    
+    .swipe-page {
+        flex: 0 0 100%;
+        width: 100%;
+        height: 100%;
+        scroll-snap-align: start;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* ================= タブ（インジケーター） ================= */
+    .tab-btn {
+        flex: 1;
+        text-align: center;
+        padding: 10px 0;
+        font-size: 13px;
+        font-weight: bold;
+        color: #9ca3af; 
+        border-bottom: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    .tab-btn.active {
+        color: #3b82f6; 
+        border-bottom: 2px solid #3b82f6;
+    }
+    html.dark .tab-btn.active {
+        color: #60a5fa;
+        border-bottom: 2px solid #60a5fa;
+    }
+
+    /* ================= チャット吹き出し共通 ================= */
     .chat-bubble {
         max-width: 85%;
         padding: 12px 16px;
@@ -36,28 +81,10 @@
     /* ユーザーの吹き出し（右側） */
     .chat-bubble-user {
         align-self: flex-end;
-        background-color: #3b82f6; /* blue-500 */
+        background-color: #3b82f6; 
         color: #ffffff;
         border-bottom-right-radius: 4px;
         box-shadow: 0 1px 2px rgba(59, 130, 246, 0.3);
-    }
-
-    /* クイック質問ボタン（サジェストチップ） */
-    .quick-question {
-        padding: 8px 14px;
-        border: 1px solid #3b82f6;
-        border-radius: 20px;
-        color: #3b82f6;
-        background-color: #ffffff;
-        font-size: 12px;
-        font-weight: bold;
-        white-space: nowrap;
-        transition: all 0.2s;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
-    .quick-question:active {
-        background-color: #3b82f6;
-        color: #ffffff;
     }
 
     /* 入力エリア（画面下部に固定） */
@@ -68,7 +95,8 @@
         right: 0;
         background-color: #ffffff;
         border-top: 1px solid #e5e7eb;
-        padding: 10px 16px env(safe-area-inset-bottom);
+        /* ★修正: 右下の＋ボタンと被らないように、右側に80pxの余白を設ける */
+        padding: 10px 80px 10px 16px;
         z-index: 20;
     }
 
@@ -89,7 +117,6 @@
 
     /* ダークモード設定 */
     html.dark .chat-bubble-ai { background-color: #1f2937; color: #f3f4f6; border-color: #374151; }
-    html.dark .quick-question { background-color: #1f2937; border-color: #60a5fa; color: #60a5fa; }
     html.dark .chat-input-area { background-color: #1f2937; border-color: #374151; }
     html.dark .ai-result-card { background: #1f2937; border-color: #374151; }
 </style>
@@ -99,71 +126,163 @@
 <div class="flex flex-col h-full relative bg-gray-50 dark:bg-gray-900">
     
     <!-- 上部ヘッダー -->
-    <div class="px-4 py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 flex items-center gap-3 shrink-0 z-10 shadow-sm">
-        <a href="javascript:history.back()" class="text-xl text-gray-800 dark:text-gray-200 p-1">←</a>
-        <div>
+    <div class="px-4 py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 flex flex-col shrink-0 z-10 shadow-sm pt-safe">
+        <div class="flex items-center gap-3 w-full">
+            <a href="javascript:history.back()" class="text-xl text-gray-800 dark:text-gray-200 p-1">←</a>
             <h1 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
                 <span>🤖</span> AI相談
             </h1>
         </div>
-    </div>
-
-    <!-- チャットログエリア -->
-    <!-- 下部に入力エリアがあるため、padding-bottomを大きく取って隠れないようにする -->
-    <div id="chatContainer" class="flex-grow overflow-y-auto px-4 pt-6 pb-40 flex flex-col gap-5">
         
-        <!-- 最初のAIの挨拶 -->
-        <div class="flex gap-2">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm shrink-0 shadow-sm mt-1">
-                🤖
+        <!-- タブ切り替えボタン -->
+        <div class="flex w-full mt-2">
+            <button type="button" id="tab-chat" class="tab-btn active" onclick="switchTab(0)">💬 対話で相談</button>
+            <button type="button" id="tab-form" class="tab-btn" onclick="switchTab(1)">📝 項目を選んで相談</button>
+        </div>
+    </div>
+
+    <!-- スワイプコンテナ -->
+    <div id="swipeContainer" class="swipe-container" onscroll="handleScroll()">
+        
+        <!-- ==============================================
+             画面1：対話型（チャット）
+             ============================================== -->
+        <div class="swipe-page" id="page-chat">
+            <div id="chatContainer" class="flex-grow overflow-y-auto px-4 pt-6 pb-24 flex flex-col gap-5">
+                
+                <!-- 最初のAIの挨拶 -->
+                <div class="flex gap-2">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm shrink-0 shadow-sm mt-1">
+                        🤖
+                    </div>
+                    <div class="chat-bubble chat-bubble-ai">
+                        こんにちは！「マッピン」のAIコンシェルジュです。<br><br>
+                        みんなのリアルタイムな投稿データの中から、いまの気分や状況にピッタリのスポットをご提案します。<br>
+                        「海が見える静かな場所」「今から30分で行けるカフェ」など、自由に話しかけてみてください✨
+                    </div>
+                </div>
+
             </div>
-            <div class="chat-bubble chat-bubble-ai">
-                こんにちは！「マッピン」のAIコンシェルジュです。<br><br>
-                みんなのリアルタイムな投稿データの中から、いまの気分や状況にピッタリのスポットをご提案します。<br>
-                「海が見える静かな場所」「今から30分で行けるカフェ」など、自由に話しかけてみてください✨
+
+            <div class="chat-input-area">
+                <form id="chatForm" onsubmit="submitChat(event)" class="flex gap-2">
+                    <input type="text" id="chatInput" autocomplete="off" placeholder="AIに相談する..." required
+                           class="flex-grow bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 dark:text-white transition">
+                    <button type="submit" id="sendBtn" class="w-10 h-10 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ==============================================
+             画面2：項目選択型（フォーム）
+             ============================================== -->
+        <div class="swipe-page" id="page-form">
+            <div class="flex-grow overflow-y-auto px-5 py-6 pb-20 space-y-5">
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-2">希望の条件を選択して「提案してもらう」ボタンを押してください。</p>
+
+                <form id="aiForm" onsubmit="submitFormSuggest(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">🚗 移動手段</label>
+                        <select id="formMobility" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-white outline-none focus:border-blue-500">
+                            <option value="指定なし">指定なし</option>
+                            <option value="車・ドライブ">🚗 車・ドライブ</option>
+                            <option value="自転車・サイクリング">🚲 自転車・サイクリング</option>
+                            <option value="徒歩・お散歩">🚶 徒歩・お散歩</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">⏱ 所要時間</label>
+                        <select id="formDuration" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-white outline-none focus:border-blue-500">
+                            <option value="指定なし">指定なし</option>
+                            <option value="サクッと1〜2時間">サクッと1〜2時間</option>
+                            <option value="半日くらい">半日くらい</option>
+                            <option value="1日たっぷり">1日たっぷり</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">👥 誰と行く？</label>
+                        <select id="formCompanion" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-white outline-none focus:border-blue-500">
+                            <option value="指定なし">指定なし</option>
+                            <option value="1人で">👤 1人で</option>
+                            <option value="友達と">👥 友達と</option>
+                            <option value="恋人・夫婦で">💑 恋人・夫婦で</option>
+                            <option value="家族・子供と">👨‍👩‍👧‍👦 家族・子供と</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">✨ 今の気分・目的</label>
+                        <select id="formMood" class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl text-sm bg-white dark:bg-gray-700 dark:text-white outline-none focus:border-blue-500">
+                            <option value="指定なし">指定なし</option>
+                            <option value="絶景を見て癒やされたい">🏞️ 絶景を見て癒やされたい</option>
+                            <option value="美味しいスイーツやご飯が食べたい">🍰 美味しいものが食べたい</option>
+                            <option value="静かな穴場でゆっくりしたい">🤫 静かな穴場でゆっくりしたい</option>
+                            <option value="季節感を楽しみたい">🍁 季節感を楽しみたい</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1.5">📝 その他自由入力</label>
+                        <textarea id="formFreeText" rows="2" placeholder="例：駐車場が広い場所、海が見えるベンチ" class="w-full p-4 border border-gray-300 dark:border-gray-600 rounded-xl text-sm resize-none bg-white dark:bg-gray-700 dark:text-white outline-none focus:border-blue-500"></textarea>
+                    </div>
+
+                    <div id="formResultArea" class="hidden mt-4 p-4 bg-indigo-50 dark:bg-indigo-900 border border-indigo-100 dark:border-indigo-700 rounded-xl text-sm dark:text-gray-200"></div>
+
+                    <button type="submit" id="formSubmitBtn" class="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl mt-2 shadow-lg active:scale-95 transition flex justify-center items-center gap-2">
+                        ✨ 条件に合う場所を提案してもらう
+                    </button>
+                </form>
             </div>
         </div>
 
     </div>
-
-    <!-- 入力エリア（下部固定） -->
-    <div class="chat-input-area">
-        <!-- クイック質問（サジェスト） -->
-        <div id="quickQuestions" class="flex overflow-x-auto no-scrollbar gap-2 mb-3 pb-1">
-            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('静かな穴場でゆっくりしたい')">🤫 静かな穴場でゆっくりしたい</button>
-            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('絶景を見て癒やされたい')">🏞️ 絶景を見て癒やされたい</button>
-            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('美味しいスイーツが食べたい')">🍰 美味しいスイーツが食べたい</button>
-            <button type="button" class="quick-question shrink-0" onclick="sendQuickQuestion('今からサクッと1時間で行ける場所')">⏱ サクッと1時間で行ける場所</button>
-        </div>
-
-        <!-- フォーム -->
-        <form id="chatForm" onsubmit="submitChat(event)" class="flex gap-2">
-            <input type="text" id="chatInput" autocomplete="off" placeholder="AIに相談する..." required
-                   class="flex-grow bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 dark:text-white transition">
-            <button type="submit" id="sendBtn" class="w-10 h-10 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                <!-- 送信アイコン（紙飛行機） -->
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-            </button>
-        </form>
-    </div>
-
 </div>
 
-<!-- CSRFトークン（API送信用） -->
 {% csrf_token %}
 
 <script>
+    // =========================================================
+    // ★ 画面スワイプ＆タブ切り替え
+    // =========================================================
+    const swipeContainer = document.getElementById('swipeContainer');
+    const tabChat = document.getElementById('tab-chat');
+    const tabForm = document.getElementById('tab-form');
+    
+    function switchTab(pageIndex) {
+        const screenWidth = swipeContainer.clientWidth;
+        swipeContainer.scrollTo({ left: screenWidth * pageIndex, behavior: 'smooth' });
+    }
+
+    function handleScroll() {
+        const scrollLeft = swipeContainer.scrollLeft;
+        const screenWidth = swipeContainer.clientWidth;
+        const pageIndex = Math.round(scrollLeft / screenWidth);
+
+        if (pageIndex === 0) {
+            tabChat.classList.add('active'); tabForm.classList.remove('active');
+        } else {
+            tabChat.classList.remove('active'); tabForm.classList.add('active');
+        }
+    }
+
+    // =========================================================
+    // ★ 画面1：対話（チャット）型の処理
+    // =========================================================
     const chatContainer = document.getElementById('chatContainer');
     const chatInput = document.getElementById('chatInput');
     const sendBtn = document.getElementById('sendBtn');
-    const quickQuestions = document.getElementById('quickQuestions');
 
-    // 常に最新のメッセージが見えるように一番下へスクロールする関数
+    // 会話の履歴を保存する配列
+    let chatHistory = [];
+
     function scrollToBottom() {
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // ユーザーのメッセージを画面に追加する関数
     function appendUserMessage(text) {
         const div = document.createElement('div');
         div.className = 'chat-bubble chat-bubble-user';
@@ -172,7 +291,6 @@
         scrollToBottom();
     }
 
-    // AIのメッセージ（ローディング中）を画面に追加し、その要素を返す関数
     function appendAILoading() {
         const wrapper = document.createElement('div');
         wrapper.className = 'flex gap-2';
@@ -190,64 +308,56 @@
         chatContainer.appendChild(wrapper);
         scrollToBottom();
         
-        return bubble; // 後で中身を書き換えるために返す
+        return bubble;
     }
 
-    // クイック質問ボタンを押した時の処理
-    function sendQuickQuestion(text) {
-        chatInput.value = text;
-        quickQuestions.style.display = 'none'; // 質問後はサジェストを隠す
-        document.getElementById('chatForm').dispatchEvent(new Event('submit'));
-    }
-
-    // フォーム送信時のメイン処理
     async function submitChat(event) {
         event.preventDefault();
         
         const text = chatInput.value.trim();
         if (!text) return;
 
-        // UIの更新（ユーザーの発言を表示し、入力をロック）
         appendUserMessage(text);
         chatInput.value = '';
-        chatInput.blur(); // キーボードを閉じる
+        chatInput.blur();
         sendBtn.disabled = true;
         chatInput.disabled = true;
-        quickQuestions.style.display = 'none';
 
-        // AIのローディング表示
         const aiBubble = appendAILoading();
 
         try {
-            // 既存の ai_suggest_view APIへ送信
-            // ※既存APIは「移動手段」「所要時間」などを分けて受け取る仕様のため、すべて「free_text」に突っ込んで解析させます
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-            const response = await fetch('/api/ai_suggest/', {
+            const response = await fetch('/api/ai_chat/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({
-                    mobility: 'すべて',
-                    duration: '指定なし',
-                    companion: '指定なし',
-                    mood: '指定なし',
-                    free_text: text // チャットの自由入力をここに渡す
+                    history: chatHistory,
+                    message: text
                 })
             });
 
             const data = await response.json();
 
             if (data.status === 'ok') {
-                // 返ってきたHTMLをAIの吹き出しにセット
-                // AIの結果は見やすいように専用のカードデザインでラップする
-                aiBubble.innerHTML = `
-                    今日ならここがおすすめです！✨
-                    <div class="ai-result-card p-3 mt-2 text-sm text-gray-800 dark:text-gray-200">
-                        ${data.answer_html}
-                    </div>
-                `;
+                // 成功したら、今回のやり取りを履歴に保存
+                chatHistory.push({ role: 'user', text: text });
+                chatHistory.push({ role: 'model', text: data.answer_html });
+
+                // AIが提案してきたか（ボタンが含まれているか）で表示を分ける
+                if (data.answer_html.includes('<button')) {
+                    aiBubble.innerHTML = `
+                        条件に合う場所が見つかりました！✨
+                        <div class="ai-result-card p-3 mt-2 text-sm text-gray-800 dark:text-gray-200">
+                            ${data.answer_html}
+                        </div>
+                    `;
+                } else {
+                    // 単純な質問などの返答の場合はそのまま吹き出しで表示
+                    aiBubble.innerHTML = data.answer_html;
+                }
             } else {
                 aiBubble.innerHTML = '申し訳ありません、エラーが発生しました。もう一度お試しください。';
             }
@@ -255,16 +365,62 @@
         } catch (error) {
             aiBubble.innerHTML = '通信に失敗しました。電波の良いところで再度お試しください。';
         } finally {
-            // ロック解除
             sendBtn.disabled = false;
             chatInput.disabled = false;
             scrollToBottom();
         }
     }
 
-    // マップへのジャンプ処理（APIから返ってくるボタン用）
+
+    // =========================================================
+    // ★ 画面2：項目選択（フォーム）型の処理
+    // =========================================================
+    async function submitFormSuggest(event) {
+        event.preventDefault();
+        
+        const formSubmitBtn = document.getElementById('formSubmitBtn');
+        const formResultArea = document.getElementById('formResultArea');
+        
+        formSubmitBtn.disabled = true;
+        formSubmitBtn.innerHTML = '<span class="animate-spin">⏳</span> 提案を作成中...';
+        formResultArea.classList.add('hidden');
+
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            // フォーム用は一発回答用のAPIを利用
+            const response = await fetch('/api/ai_suggest/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    mobility: document.getElementById('formMobility').value,
+                    duration: document.getElementById('formDuration').value,
+                    companion: document.getElementById('formCompanion').value,
+                    mood: document.getElementById('formMood').value,
+                    free_text: document.getElementById('formFreeText').value
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'ok') {
+                formResultArea.innerHTML = data.answer_html;
+                formResultArea.classList.remove('hidden');
+            } else {
+                alert('エラーが発生しました: ' + data.message);
+            }
+        } catch (error) {
+            alert('通信に失敗しました。電波の良いところで再度お試しください。');
+        } finally {
+            formSubmitBtn.disabled = false;
+            formSubmitBtn.innerHTML = '✨ 条件に合う場所を提案してもらう';
+        }
+    }
+
+    // AI提案内の「マップで見る」ボタンから呼ばれる関数
     function jumpToSpotOnMap(lat, lng, spotId) {
-        // AI画面からは、マップ画面へURLパラメータ付きで遷移させる
         window.location.href = `/map/?lat=${lat}&lng=${lng}&spot=${spotId}`;
     }
 </script>

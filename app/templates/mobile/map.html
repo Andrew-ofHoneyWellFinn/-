@@ -402,7 +402,6 @@
         }
     }
 
-    // ★いいね処理
     async function toggleLike(postId) {
         try {
             const res = await fetch(`/api/posts/${postId}/like/`, {
@@ -434,7 +433,6 @@
         } catch (e) { alert('エラーが発生しました'); }
     }
 
-    // ★ブックマーク処理
     async function toggleBookmark(postId) {
         try {
             const res = await fetch(`/api/posts/${postId}/bookmark/`, {
@@ -709,6 +707,8 @@
         const paramLat = parseFloat(params.get('lat'));
         const paramLng = parseFloat(params.get('lng'));
         const paramSpotId = parseInt(params.get('spot'));
+        // ★追加：?action=post というパラメータがあったら投稿モーダルを開く
+        const actionParam = params.get('action');
 
         const hasParam = !isNaN(paramLat) && !isNaN(paramLng);
         const initialCenter = hasParam ? { lat: paramLat, lng: paramLng } : originPos;
@@ -775,8 +775,25 @@
                         zIndex: 999999999,
                         icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#ea4335", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
                     });
+
+                    // ★追加：アクションが 'post' なら、現在地を取得した直後に自動で投稿モーダルを開く
+                    if (actionParam === 'post') {
+                        // 少しだけ待機（地図の中心が現在地に移動しきるのを待つ）して開く
+                        setTimeout(() => {
+                            openSpotModal(originPos.lat, originPos.lng, '現在地からの投稿');
+                        }, 600);
+                    }
                 },
-                (err) => console.warn("GPSエラー:", err.message),
+                (err) => {
+                    console.warn("GPSエラー:", err.message);
+                    // ★追加：GPSが取得できなかった場合も、デフォルト位置でモーダルを開く
+                    if (actionParam === 'post') {
+                        setTimeout(() => {
+                            openSpotModal(originPos.lat, originPos.lng, '位置情報取得エラー');
+                            alert("現在地が取得できなかったため、デフォルトの位置で開きました。\n地図上の好きな場所をタップして投稿することもできます。");
+                        }, 600);
+                    }
+                },
                 geoOptions
             );
 
@@ -791,6 +808,13 @@
                 (err) => console.warn("GPS追跡エラー:", err.message),
                 geoOptions
             );
+        } else {
+            // ★追加：ブラウザがGPS非対応の場合
+            if (actionParam === 'post') {
+                setTimeout(() => {
+                    openSpotModal(originPos.lat, originPos.lng, '');
+                }, 600);
+            }
         }
     }
 
@@ -826,6 +850,7 @@
 
     let map, geocoder, placesService, infoWindow, userMarker = null, tempClickMarker = null;
     let spotMarkers = [], spotsVisible = true, currentRadius = 'all', userPosAcquired = false;
+    // 初期値としての岡山市中心部
     let originPos = { lat: 34.6655, lng: 133.9180 }; 
     const initialSpots = JSON.parse(document.getElementById('initial-spots-data').textContent);
 
