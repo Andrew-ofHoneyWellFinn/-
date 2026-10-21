@@ -145,11 +145,11 @@
                 <!-- ログアウトボタン -->
             {% else %}
                 <!-- 未ログイン時のボタン -->
-                     <a href="{% url 'login' %}" class="header-nav-link header-guest-link">
-                    ログイン
-                </a>
-                     <a href="{% url 'signup' %}" class="header-nav-link header-guest-link primary">
+                <a href="{% url 'signup' %}" class="header-nav-link header-guest-link primary">
                     新規登録
+                </a>
+                <a href="{% url 'login' %}" class="header-nav-link header-guest-link">
+                    ログイン
                 </a>
             {% endif %}
         </div>
