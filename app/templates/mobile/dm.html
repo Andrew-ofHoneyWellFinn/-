@@ -1,0 +1,151 @@
+{% extends 'mobile/base.html' %}
+
+{% block title %}メッセージ | 旅ミッケ{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full bg-white dark:bg-gray-900">
+    
+    <!-- ヘッダー -->
+    <div class="px-4 py-3 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 flex items-center justify-between sticky top-0 z-20 pt-safe">
+        <h1 class="text-lg font-bold text-gray-900 dark:text-white">メッセージ</h1>
+        
+        <!-- ★修正：クリックでモーダルを開く -->
+        <button type="button" onclick="openNewMessageModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- 検索バー -->
+    <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-800">
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <input type="text" placeholder="メッセージを検索" class="w-full bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-full pl-10 pr-4 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border-none transition">
+        </div>
+    </div>
+
+    <!-- DM一覧リスト -->
+    <div class="flex-grow overflow-y-auto pb-20">
+        {% if dm_list %}
+            {% for dm in dm_list %}
+            <a href="{% url 'dm_chat' dm.target_user.username %}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition active:bg-gray-100 dark:active:bg-gray-700">
+                
+                <div class="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 overflow-hidden flex items-center justify-center font-bold text-gray-500 dark:text-gray-400">
+                    {% if dm.target_user.profile.avatar %}
+                        <img src="{{ dm.target_user.profile.avatar.url }}" alt="{{ dm.target_user.username }}" class="w-full h-full object-cover">
+                    {% else %}
+                        {{ dm.target_user.username|make_list|first|upper }}
+                    {% endif %}
+                </div>
+                
+                <div class="flex-grow min-w-0">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <div class="flex items-center gap-1 min-w-0">
+                            <p class="font-bold text-sm text-gray-900 dark:text-white truncate">{{ dm.target_user.first_name|default:dm.target_user.username }}</p>
+                            <p class="text-xs text-gray-500 truncate">@{{ dm.target_user.username }}</p>
+                        </div>
+                        <span class="text-[10px] text-gray-500 shrink-0 ml-2">{{ dm.last_message_time }}</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-2">
+                        <p class="text-sm text-gray-600 dark:text-gray-400 truncate {% if dm.unread_count > 0 %}font-bold text-gray-900 dark:text-white{% endif %}">
+                            {{ dm.last_message }}
+                        </p>
+                        {% if dm.unread_count > 0 %}
+                            <div class="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center shrink-0">
+                                <span class="text-[9px] text-white font-bold">{{ dm.unread_count }}</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        {% else %}
+            <!-- データがない場合 -->
+            <div class="flex flex-col items-center justify-center text-center p-8 mt-6">
+                <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 text-blue-500 rounded-full flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                    </svg>
+                </div>
+                <h3 class="font-bold text-gray-900 dark:text-white mb-1">メッセージへようこそ</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                    気になるユーザーにダイレクトメッセージを送って、非公開のやり取りを始めましょう。
+                </p>
+                <!-- ★修正：クリックでモーダルを開く -->
+                <button type="button" onclick="openNewMessageModal()" class="mt-6 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-full shadow-md active:scale-95 transition">
+                    メッセージを作成
+                </button>
+            </div>
+            
+            <div class="px-4 py-2 mt-4 text-xs font-bold text-gray-400 border-b border-gray-100 dark:border-gray-800">
+                デザイン確認用ダミーデータ
+            </div>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition active:bg-gray-100 dark:active:bg-gray-700 opacity-60">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-pink-400 to-orange-400 shrink-0 flex items-center justify-center font-bold text-white">M</div>
+                <div class="flex-grow min-w-0">
+                    <div class="flex justify-between items-baseline mb-0.5">
+                        <div class="flex items-center gap-1 min-w-0">
+                            <p class="font-bold text-sm text-gray-900 dark:text-white truncate">みかん</p>
+                            <p class="text-xs text-gray-500 truncate">@mikan_travel</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 truncate">（ダミーのため遷移しません）</p>
+                </div>
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ★追加：新規メッセージ作成（フォロー中から選択）モーダル -->
+<div id="newMessageModal" onclick="if(event.target.id==='newMessageModal') closeNewMessageModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
+    <div class="bg-white dark:bg-gray-900 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="max-height: 85vh; min-height: 50vh;">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0 bg-white dark:bg-gray-900 sticky top-0 z-10">
+            <h3 class="font-bold text-base text-gray-900 dark:text-white">新しいメッセージ</h3>
+            <button type="button" onclick="closeNewMessageModal()" class="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-bold text-gray-500">✕</button>
+        </div>
+        
+        <div class="overflow-y-auto flex-grow pb-8">
+            <p class="px-4 py-2 text-xs font-bold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50">フォロー中のユーザーから選択</p>
+            
+            {% if following_users %}
+                {% for u in following_users %}
+                <a href="{% url 'dm_chat' u.username %}" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800/50 transition">
+                    <div class="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 overflow-hidden flex items-center justify-center font-bold text-gray-500 text-sm">
+                        {% if u.profile.avatar %}
+                            <img src="{{ u.profile.avatar.url }}" alt="{{ u.username }}" class="w-full h-full object-cover">
+                        {% else %}
+                            {{ u.username|make_list|first|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-bold text-sm text-gray-900 dark:text-white">{{ u.first_name|default:u.username }}</span>
+                        <span class="text-xs text-gray-500">@{{ u.username }}</span>
+                    </div>
+                </a>
+                {% endfor %}
+            {% else %}
+                <div class="p-8 text-center">
+                    <div class="text-3xl mb-2">👥</div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        まだ誰もフォローしていません。<br>タイムラインから気になる人をフォローして、メッセージを送ってみましょう！
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // モーダルの開閉処理
+    function openNewMessageModal() {
+        document.getElementById('newMessageModal').classList.remove('hidden');
+    }
+    function closeNewMessageModal() {
+        document.getElementById('newMessageModal').classList.add('hidden');
+    }
+</script>
+
+{% endblock %}

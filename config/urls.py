@@ -52,6 +52,9 @@ urlpatterns = [
     path('api/posts/<int:post_id>/comments/', views.post_comments_api, name='post_comments_api'),
     path('api/posts/<int:post_id>/like/', views.toggle_like_api, name='toggle_like_api'),
     path('api/posts/<int:post_id>/bookmark/', views.toggle_bookmark_api, name='toggle_bookmark_api'),
+    path('dm/', views.dm_list_view, name='dm_list'),
+    path('dm/<str:username>/', views.dm_chat_view, name='dm_chat'),
+    path('api/dm/<str:username>/send/', views.send_dm_api, name='send_dm_api'),
 ]
 
 # ==========================================

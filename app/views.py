@@ -16,7 +16,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.conf import settings 
 from google import genai
 
-from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow, Comment, Like, Bookmark
+from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow, Comment, Like, Bookmark, DirectMessage
 from .forms import ContactForm, SignUpForm
 
 
@@ -742,3 +742,110 @@ def toggle_bookmark_api(request, post_id):
         is_bookmarked = True
         
     return JsonResponse({'status': 'ok', 'is_bookmarked': is_bookmarked})
+
+
+# 上部の import 部分に DirectMessage を追加してください
+# from .models import Post, PostImage, SiteSetting, VisitHistory, Profile, Follow, Comment, Like, Bookmark, DirectMessage
+
+# =========================================================
+# ★ 追加：DM一覧画面表示API
+# =========================================================
+# =========================================================
+# ★ 追加：DM一覧画面表示API
+# =========================================================
+@login_required
+def dm_list_view(request):
+    user = request.user
+    
+    # 自分が送信した、または受信したすべてのメッセージを新しい順に取得
+    messages = DirectMessage.objects.filter(
+        Q(sender=user) | Q(receiver=user)
+    ).order_by('-created_at').select_related('sender__profile', 'receiver__profile')
+    
+    dm_dict = {}
+    for msg in messages:
+        target_user = msg.receiver if msg.sender == user else msg.sender
+        
+        if target_user.id not in dm_dict:
+            dm_dict[target_user.id] = {
+                'target_user': target_user,
+                'last_message': msg.message,
+                'last_message_time': localtime(msg.created_at).strftime('%m/%d %H:%M'),
+                'unread_count': 0
+            }
+        
+        if msg.receiver == user and not msg.is_read:
+            dm_dict[target_user.id]['unread_count'] += 1
+
+    dm_list = list(dm_dict.values())
+    
+    # ★追加：新規メッセージ作成用に「自分がフォローしているユーザー」のリストを取得
+    following_relations = Follow.objects.filter(follower=user).select_related('following__profile')
+    following_users = [rel.following for rel in following_relations]
+    
+    context = {
+        'dm_list': dm_list,
+        'following_users': following_users,  # テンプレートに渡す
+    }
+    
+    if getattr(request, 'user_agent', None) and request.user_agent.is_mobile:
+        return render(request, 'mobile/dm.html', context)
+    return render(request, 'dm.html', context)
+      
+
+# =========================================================
+# ★ 追加：個別DMチャット画面表示API
+# =========================================================
+@login_required
+def dm_chat_view(request, username):
+    target_user = get_object_or_404(User, username=username)
+    
+    # 自分が相手に送ったメッセージ、または相手から自分に送られたメッセージを古い順に取得
+    messages = DirectMessage.objects.filter(
+        (Q(sender=request.user) & Q(receiver=target_user)) |
+        (Q(sender=target_user) & Q(receiver=request.user))
+    ).order_by('created_at')
+
+    # トーク画面を開いた時点で、相手からの未読メッセージを「既読」に変更
+    unread_messages = messages.filter(receiver=request.user, is_read=False)
+    unread_messages.update(is_read=True)
+
+    context = {
+        'target_user': target_user,
+        'messages': messages,
+    }
+    
+    if getattr(request, 'user_agent', None) and request.user_agent.is_mobile:
+        return render(request, 'mobile/dm_chat.html', context)
+    return render(request, 'dm_chat.html', context)
+
+
+# =========================================================
+# ★ 追加：メッセージ非同期送信用API
+# =========================================================
+@login_required
+@require_POST
+def send_dm_api(request, username):
+    target_user = get_object_or_404(User, username=username)
+    try:
+        data = json.loads(request.body)
+        text = data.get('text', '').strip()
+        if not text:
+            return JsonResponse({'status': 'error', 'message': 'メッセージが空です'}, status=400)
+            
+        # データベースにメッセージを保存
+        msg = DirectMessage.objects.create(
+            sender=request.user,
+            receiver=target_user,
+            message=text
+        )
+        
+        return JsonResponse({
+            'status': 'ok',
+            'message': {
+                'text': msg.message,
+                'created_at': localtime(msg.created_at).strftime('%H:%M')
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)}, status=500)

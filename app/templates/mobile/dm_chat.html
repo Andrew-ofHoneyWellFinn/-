@@ -1,0 +1,200 @@
+{% extends 'mobile/base.html' %}
+{% load tz %}
+
+{% block title %}{{ target_user.username }} さんとのメッセージ | 旅ミッケ{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* 画面全体を固定してスクロールバーを隠す */
+    html, body { height: 100%; overflow: hidden; background-color: #f8fafc; }
+    html.dark body { background-color: #111827; }
+    
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* チャットの吹き出しデザイン */
+    .chat-bubble {
+        max-width: 75%;
+        padding: 10px 14px;
+        border-radius: 20px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+    }
+    
+    /* 右側（自分）の吹き出し */
+    .chat-bubble-me {
+        background-color: #3b82f6;
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+    
+    /* 左側（相手）の吹き出し */
+    .chat-bubble-other {
+        background-color: white;
+        color: #1f2937;
+        border: 1px solid #e5e7eb;
+        border-bottom-left-radius: 4px;
+    }
+    html.dark .chat-bubble-other {
+        background-color: #374151;
+        color: white;
+        border-color: #4b5563;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col h-full h-[100dvh] relative">
+    
+    <!-- ヘッダー -->
+    <div class="px-2 py-3 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0 z-10 pt-safe">
+        <div class="flex items-center gap-2">
+            <!-- 戻るボタン -->
+            <a href="{% url 'dm_list' %}" class="p-2 text-gray-600 dark:text-gray-300 active:scale-90 transition rounded-full hover:bg-gray-100 dark:hover:bg-gray-800">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
+            </a>
+            <!-- 相手のアイコンと名前 -->
+            <a href="{% url 'profile' target_user.username %}" class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 overflow-hidden flex items-center justify-center font-bold text-gray-500 text-xs">
+                    {% if target_user.profile.avatar %}
+                        <img src="{{ target_user.profile.avatar.url }}" alt="avatar" class="w-full h-full object-cover">
+                    {% else %}
+                        {{ target_user.username|make_list|first|upper }}
+                    {% endif %}
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-bold text-sm text-gray-900 dark:text-white leading-tight">{{ target_user.first_name|default:target_user.username }}</span>
+                    <span class="text-[10px] text-gray-500 leading-tight">@{{ target_user.username }}</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- チャット履歴エリア -->
+    <div id="chatContainer" class="flex-grow overflow-y-auto no-scrollbar p-4 space-y-4 pb-4">
+        
+        <!-- メッセージのループ表示 -->
+        {% for msg in messages %}
+            {% if msg.sender == request.user %}
+                <!-- 自分の送信したメッセージ（右側） -->
+                <div class="flex flex-col items-end mb-1">
+                    <div class="flex items-end gap-1.5">
+                        <div class="flex flex-col items-end">
+                            {% if msg.is_read %}
+                                <span class="text-[9px] text-gray-400 mb-0.5">既読</span>
+                            {% endif %}
+                            <span class="text-[10px] text-gray-400 mb-1">{{ msg.created_at|timezone:"Asia/Tokyo"|date:"H:i" }}</span>
+                        </div>
+                        <div class="chat-bubble chat-bubble-me shadow-sm">
+                            {{ msg.message|linebreaksbr }}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <!-- 相手から受信したメッセージ（左側） -->
+                <div class="flex flex-col items-start mb-1">
+                    <div class="flex items-end gap-1.5">
+                        <div class="w-7 h-7 rounded-full bg-gray-200 dark:bg-gray-700 shrink-0 overflow-hidden flex items-center justify-center font-bold text-gray-500 text-xs mb-1">
+                            {% if target_user.profile.avatar %}
+                                <img src="{{ target_user.profile.avatar.url }}" alt="avatar" class="w-full h-full object-cover">
+                            {% else %}
+                                {{ target_user.username|make_list|first|upper }}
+                            {% endif %}
+                        </div>
+                        <div class="chat-bubble chat-bubble-other shadow-sm">
+                            {{ msg.message|linebreaksbr }}
+                        </div>
+                        <span class="text-[10px] text-gray-400 mb-1">{{ msg.created_at|timezone:"Asia/Tokyo"|date:"H:i" }}</span>
+                    </div>
+                </div>
+            {% endif %}
+        {% empty %}
+            <!-- メッセージがまだない場合 -->
+            <div class="text-center text-xs text-gray-500 dark:text-gray-400 mt-10">
+                ここからメッセージのやり取りが始まります。
+            </div>
+        {% endfor %}
+        
+    </div>
+
+    <!-- 入力フォームエリア（一番下に固定） -->
+    <!-- ★ 修正: pr-[80px] を追加して右側に余白を持たせ、プラスボタンと被らないようにしました -->
+    <div class="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 pl-3 pr-[80px] py-2 pb-safe shrink-0">
+        <form id="dmForm" onsubmit="submitMessage(event)" class="flex items-center gap-2">
+            <input type="text" id="messageInput" autocomplete="off" placeholder="メッセージを作成" required
+                   class="flex-grow bg-gray-100 dark:bg-gray-800 border-transparent rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white transition">
+            
+            <button type="submit" id="sendBtn" class="w-10 h-10 shrink-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center shadow-md active:scale-90 transition disabled:opacity-50">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </form>
+    </div>
+</div>
+
+{% csrf_token %}
+
+<script>
+    const chatContainer = document.getElementById('chatContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    
+    // 画面を開いたときに一番下（最新メッセージ）までスクロールする
+    function scrollToBottom() {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    window.onload = scrollToBottom;
+
+    // メッセージ送信処理
+    async function submitMessage(event) {
+        event.preventDefault();
+        
+        const text = messageInput.value.trim();
+        if (!text) return;
+
+        // すぐに入力欄を空にして送信ボタンをロック
+        messageInput.value = '';
+        messageInput.focus();
+        sendBtn.disabled = true;
+        
+        // サーバー通信の前に、画面に即座に吹き出しを追加する（サクサク感を出すため）
+        const timeNow = new Date().toLocaleTimeString('ja-JP', {hour: '2-digit', minute:'2-digit'});
+        const formattedText = text.replace(/\n/g, '<br>');
+        
+        const msgHtml = `
+            <div class="flex flex-col items-end mb-1 animate-slide-up">
+                <div class="flex items-end gap-1.5">
+                    <div class="flex flex-col items-end">
+                        <span class="text-[10px] text-gray-400 mb-1">${timeNow}</span>
+                    </div>
+                    <div class="chat-bubble chat-bubble-me shadow-sm">${formattedText}</div>
+                </div>
+            </div>
+        `;
+        chatContainer.insertAdjacentHTML('beforeend', msgHtml);
+        scrollToBottom();
+
+        // サーバーへAPI送信
+        try {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const response = await fetch("{% url 'send_dm_api' target_user.username %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ text: text })
+            });
+            const data = await response.json();
+            
+            if (data.status !== 'ok') {
+                alert('エラー: ' + data.message);
+            }
+        } catch (error) {
+            alert('通信に失敗しました。');
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+</script>
+{% endblock %}

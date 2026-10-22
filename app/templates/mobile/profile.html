@@ -164,11 +164,12 @@
                                {% if is_following %}bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-white{% else %}bg-blue-600 text-white{% endif %}">
                     {% if is_following %}フォロー中{% else %}フォローする{% endif %}
                 </button>
-                <button onclick="alert('DM機能は準備中です')" class="flex-grow py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-[13px] font-bold rounded-lg transition">
+                <!-- ★修正：DM画面へ遷移するように変更 -->
+                <a href="{% url 'dm_chat' target_user.username %}" class="flex-grow py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-center text-[13px] font-bold rounded-lg transition block">
                     メッセージ
-                </button>
+                </a>
             {% else %}
-                <a href="{% url 'login' %}" class="flex-grow py-1.5 bg-blue-600 text-white text-center text-[13px] font-bold rounded-lg transition">
+                <a href="{% url 'login' %}" class="flex-grow py-1.5 bg-blue-600 text-white text-center text-[13px] font-bold rounded-lg transition block">
                     ログインしてフォロー
                 </a>
             {% endif %}

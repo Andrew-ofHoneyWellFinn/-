@@ -225,3 +225,16 @@ class Bookmark(models.Model):
 
     def __str__(self):
         return f"{self.user.username} bookmarked {self.post.spot_name}"
+    
+# ==========================================
+# ★ 追加：DM（ダイレクトメッセージ）モデル
+# ==========================================
+class DirectMessage(models.Model):
+    sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages', verbose_name='送信者')
+    receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages', verbose_name='受信者')
+    message = models.TextField(verbose_name='メッセージ')
+    is_read = models.BooleanField(default=False, verbose_name='既読フラグ')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='送信日時')
+
+    def __str__(self):
+        return f"{self.sender.username} -> {self.receiver.username}: {self.message[:20]}"
