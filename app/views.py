@@ -185,36 +185,57 @@ def profile_view(request, username):
     if request.user.is_authenticated and request.user != target_user:
         is_following = Follow.objects.filter(follower=request.user, following=target_user).exists()
     
-    user_posts = Post.objects.filter(user__username=username).order_by('-created_at')
     now = timezone.now()
     
-    for post in user_posts:
-        post.user_initial = post.user.username[0].upper() if post.user else 'G'
-        post.category_label = post.get_category_display()
-        post.mobility_label = post.get_mobility_display()
-        post.likes = post.post_likes.count()
-        post.is_liked = post.post_likes.filter(user=request.user).exists() if request.user.is_authenticated else False
-        post.is_bookmarked = post.post_bookmarks.filter(user=request.user).exists() if request.user.is_authenticated else False
-        post.comments = post.post_comments.count()
-        
-        first_image = post.images.first()
-        post.first_image_url = first_image.image.url if first_image else ''
+    # ユーザー自身の投稿を取得 (予約投稿は除外)
+    user_posts = Post.objects.filter(user__username=username, created_at__lte=now).order_by('-created_at')
+    
+    # ★追加：自分がアクセスしている場合のみ、自分がブックマークした投稿も取得する
+    bookmarked_posts = []
+    if request.user.is_authenticated and request.user == target_user:
+        bookmarked_posts = Post.objects.filter(
+            post_bookmarks__user=target_user,
+            created_at__lte=now
+        ).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        ).order_by('-post_bookmarks__created_at')
+    
+    # ★追加：投稿データに必要な情報を付与する処理を関数化（自分の投稿とブックマークの両方で使うため）
+    def process_posts(post_list):
+        for post in post_list:
+            post.user_initial = post.user.username[0].upper() if post.user else 'G'
+            post.category_label = post.get_category_display()
+            post.mobility_label = post.get_mobility_display()
+            post.likes = post.post_likes.count()
+            post.is_liked = post.post_likes.filter(user=request.user).exists() if request.user.is_authenticated else False
+            post.is_bookmarked = post.post_bookmarks.filter(user=request.user).exists() if request.user.is_authenticated else False
+            post.comments = post.post_comments.count()
+            
+            first_image = post.images.first()
+            post.first_image_url = first_image.image.url if first_image else ''
 
-        time_diff = now - post.created_at
-        post.is_expired = bool(post.expires_at and post.expires_at < now)
-        if time_diff.days == 0:
-            post.freshness = "🔥 NEW"
-            post.freshness_color = "bg-red-100 text-red-700 border-red-200"
-        elif time_diff.days > 30:
-            post.freshness = "🕰️ 古い情報"
-            post.freshness_color = "bg-gray-100 text-gray-500 border-gray-200"
-        else:
-            post.freshness = ""
+            time_diff = now - post.created_at
+            post.is_expired = bool(post.expires_at and post.expires_at < now)
+            if time_diff.days == 0:
+                post.freshness = "🔥 NEW"
+                post.freshness_color = "bg-red-100 text-red-700 border-red-200"
+            elif time_diff.days > 30:
+                post.freshness = "🕰️ 古い情報"
+                post.freshness_color = "bg-gray-100 text-gray-500 border-gray-200"
+            else:
+                post.freshness = ""
+        return post_list
+
+    # 両方のリストを処理する
+    user_posts = process_posts(user_posts)
+    if bookmarked_posts:
+        bookmarked_posts = process_posts(bookmarked_posts)
 
     context = {
         'target_user': target_user,
         'profile': profile,
         'posts': user_posts,
+        'bookmarked_posts': bookmarked_posts, # ★テンプレートにブックマークのデータを渡す
         'is_following': is_following,
     }
 
