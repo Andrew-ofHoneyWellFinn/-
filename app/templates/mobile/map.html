@@ -20,22 +20,33 @@
         border-color: #1a73e8;
     }
 
+    /* =========================================================
+       ★ 修正: バッジラベルのデザイン（文字色をモード固定に） ★
+       ========================================================= */
     .spot-custom-label {
         display: inline-block;
         background-color: rgba(255, 255, 255, 0.95);
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 4px 8px;
+        /* 枠線の色はJSで動的にセットされる color (鮮度色) を適用 */
+        border: 2px solid currentColor;
+        border-radius: 20px;
+        padding: 5px 12px;
         font-size: 11px;
-        font-weight: bold;
-        color: #111827 !important; 
+        font-weight: 900;
+        /* ★ 修正: ライトモードでの文字色を「黒」に強制固定 */
+        -webkit-text-fill-color: #111827 !important;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 140px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        pointer-events: none; 
-        transition: background-color 0.3s, color 0.3s;
+        max-width: 160px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        pointer-events: none;
+        transition: all 0.3s ease;
+        transform: translateY(-28px);
+    }
+    
+    .spot-custom-label.is-cluster {
+        border-color: #fbbf24 !important; /* ゴールド */
+        box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
     }
 
     @keyframes slideUp {
@@ -46,7 +57,12 @@
 
     html.dark .filter-btn { background-color: rgba(31, 41, 55, 0.95); color: #d1d5db; border-color: #4b5563; }
     html.dark .filter-btn.active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
-    html.dark .spot-custom-label { background-color: rgba(31, 41, 55, 0.95); border-color: #4b5563; color: #fff !important; }
+    html.dark .spot-custom-label { 
+        background-color: rgba(31, 41, 55, 0.95); 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        /* ★ 修正: ダークモードでの文字色を「白」に強制固定 */
+        -webkit-text-fill-color: #ffffff !important;
+    }
 </style>
 {% endblock %}
 
@@ -93,6 +109,7 @@
     <div id="map" class="flex-grow w-full"></div>
 </div>
 
+<!-- ==================== 各種モーダル ==================== -->
 <div id="freshnessModal" onclick="if(event.target.id==='freshnessModal') closeFreshnessModal()" class="hidden fixed inset-0 z-[99999] bg-black/60 backdrop-blur-sm flex flex-col justify-end pb-safe">
     <div class="bg-white dark:bg-gray-800 w-full rounded-t-2xl shadow-2xl overflow-hidden flex flex-col animate-slide-up" style="max-height: 90vh;">
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between shrink-0 bg-white dark:bg-gray-800 relative z-10">
@@ -101,7 +118,6 @@
         </div>
         <div class="p-5 overflow-y-auto flex-grow space-y-5 pb-8">
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">投稿からの経過時間によってピンの色を変えたり、古い情報を隠したりできます。</p>
-            
             <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
                 <div class="flex items-center gap-2">
                     <input type="color" id="freshColor1" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent">
@@ -111,7 +127,6 @@
                     <input type="number" id="freshHours1" min="0.1" step="0.1" class="w-14 px-2 py-1 text-center border rounded-lg dark:bg-gray-800 dark:border-gray-600"> 時間以内
                 </div>
             </div>
-
             <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
                 <div class="flex items-center gap-2">
                     <input type="color" id="freshColor2" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent">
@@ -121,7 +136,6 @@
                     <input type="number" id="freshHours2" min="1" step="0.5" class="w-14 px-2 py-1 text-center border rounded-lg dark:bg-gray-800 dark:border-gray-600"> 時間以内
                 </div>
             </div>
-
             <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600">
                 <div class="flex items-center gap-2">
                     <input type="color" id="freshColor3" class="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent">
@@ -131,7 +145,6 @@
                     <span class="text-xs">（これ以降はこの色）</span>
                 </div>
             </div>
-
             <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-100 dark:border-red-800">
                 <div class="flex items-center gap-2">
                     <span class="text-sm font-bold text-red-600 dark:text-red-400">👁️ 非表示にする</span>
@@ -140,7 +153,6 @@
                     <input type="number" id="freshHideHours" min="1" class="w-14 px-2 py-1 text-center border border-red-200 rounded-lg dark:bg-gray-800 dark:border-red-700"> 時間以上
                 </div>
             </div>
-
             <div class="pt-2">
                 <button type="button" onclick="saveFreshnessSettings()" class="w-full py-3.5 bg-gray-900 dark:bg-gray-100 dark:text-gray-900 hover:bg-gray-800 text-white font-bold rounded-xl shadow-lg active:scale-95 transition">
                     💾 設定を適用してマップを更新
@@ -313,49 +325,158 @@
         applyFreshnessToAllMarkers(); 
     }
 
-    const pinSVGHole = "M12,2C8.1,2,5,5.1,5,9c0,5.2,7,13,7,13s7-7.8,7-13C19,5.1,15.9,2,12,2z M12,11.5c-1.4,0-2.5-1.1-2.5-2.5s1.1-2.5,2.5-2.5s2.5,1.1,2.5,2.5S13.4,11.5,12,11.5z";
+    const modernSolidPinSVG = "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z";
     
+    function getDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371e3; // 地球の半径 (m)
+        const φ1 = lat1 * Math.PI/180;
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lng2-lng1) * Math.PI/180;
+
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; 
+    }
+
     function applyFreshnessToAllMarkers() {
         const now = Date.now();
+        const CLUSTER_RADIUS_M = 100; 
         
         spotMarkers.forEach(item => {
             if (!item.data.created_timestamp) return;
-            
             const elapsedHours = (now - item.data.created_timestamp) / (1000 * 60 * 60);
             
-            let color = freshConfig.l3_color;
-            let isFreshShow = true;
+            item.color = freshConfig.l3_color;
+            item.isFreshShow = true;
+            if (elapsedHours <= freshConfig.l1_hours) item.color = freshConfig.l1_color;
+            else if (elapsedHours <= freshConfig.l2_hours) item.color = freshConfig.l2_color;
+            else if (elapsedHours >= freshConfig.hide_hours) item.isFreshShow = false;
+        });
 
-            if (elapsedHours <= freshConfig.l1_hours) {
-                color = freshConfig.l1_color;
-            } else if (elapsedHours <= freshConfig.l2_hours) {
-                color = freshConfig.l2_color;
-            } else if (elapsedHours >= freshConfig.hide_hours) {
-                isFreshShow = false;
+        const visibleMarkers = spotMarkers.filter(m => m.isFreshShow && spotsVisible);
+        let clusters = []; 
+
+        visibleMarkers.forEach(markerObj => {
+            let addedToCluster = false;
+            for (let c of clusters) {
+                if (getDistance(c.centerLat, c.centerLng, markerObj.data.lat, markerObj.data.lng) <= CLUSTER_RADIUS_M) {
+                    c.markers.push(markerObj);
+                    addedToCluster = true;
+                    break;
+                }
             }
-
-            item.isFreshShow = isFreshShow;
-
-            item.marker.setIcon({
-                path: pinSVGHole, scale: 1.5, fillColor: color, fillOpacity: 1, 
-                strokeWeight: 1, strokeColor: "#ffffff",
-                anchor: new google.maps.Point(12, 22), labelOrigin: new google.maps.Point(12, -8)
-            });
-
-            const label = item.marker.getLabel();
-            if (label) {
-                label.className = 'spot-custom-label'; 
-                item.marker.setLabel({
-                    text: label.text,
-                    className: 'spot-custom-label',
-                    color: color
+            if (!addedToCluster) {
+                clusters.push({
+                    centerLat: markerObj.data.lat,
+                    centerLng: markerObj.data.lng,
+                    markers: [markerObj]
                 });
             }
         });
-        
-        updateMarkersVisibility();
-    }
 
+        spotMarkers.forEach(item => { item.marker.setMap(null); });
+
+        clusters.forEach(cluster => {
+            cluster.markers.sort((a, b) => b.data.created_timestamp - a.data.created_timestamp);
+            const leader = cluster.markers[0];
+            const otherCount = cluster.markers.length - 1;
+
+            leader.marker.setIcon({
+                path: modernSolidPinSVG, scale: 1.6, 
+                fillColor: leader.color, fillOpacity: 1, 
+                strokeWeight: 2, strokeColor: "#ffffff",
+                anchor: new google.maps.Point(12, 22), labelOrigin: new google.maps.Point(12, 0)
+            });
+
+            if (currentRadius !== 'all') {
+                let emoji = '📍';
+                if (leader.data.category === 'food') emoji = '🍽️ ';
+                else if (leader.data.category === 'scenery') emoji = '🏞️ ';
+
+                let contentText = leader.data.content || '';
+                contentText = contentText.replace(/\n/g, ' '); 
+                if (contentText.length > 10) contentText = contentText.substring(0, 10) + '...'; 
+                
+                if (otherCount > 0) {
+                    contentText += ` ＋${otherCount}件`;
+                }
+                
+                const customClass = otherCount > 0 ? 'spot-custom-label is-cluster' : 'spot-custom-label';
+
+                leader.marker.setLabel({
+                    text: emoji + contentText,
+                    className: customClass,
+                    color: leader.color 
+                });
+            } else {
+                leader.marker.setLabel(null);
+            }
+
+            leader.marker.setMap(map);
+
+            // ★修正: クリック時にクラスタの投稿（複数）を表示しつつ、同じエリアの他の投稿も下部に表示する
+            google.maps.event.clearListeners(leader.marker, 'click'); 
+            leader.marker.addListener('click', () => {
+                pinDropSound.currentTime = 0; 
+                pinDropSound.play().catch(e => {});
+
+                document.getElementById('detailSpotName').innerText = otherCount > 0 ? `${leader.data.spot_name}周辺 (${cluster.markers.length}件)` : leader.data.spot_name;
+
+                let htmlContent = '';
+                
+                // 1. クラスタ内の全ての投稿を生成（メイン投稿群）
+                cluster.markers.forEach((mObj, index) => {
+                    htmlContent += generateFullPostCardHtml(mObj.data, true); // trueでメインカード風デザインにする
+                });
+
+                // 2. クラスタ外の「同エリアの他の投稿」を取得して下部に生成
+                let areaTimelineHtml = '';
+                const currentSpotAreaKey = leader.data.area || determineAreaFromLatLng(leader.data.lat, leader.data.lng).key;
+                const currentAreaName = AREA_DEFINITIONS[currentSpotAreaKey] ? AREA_DEFINITIONS[currentSpotAreaKey].name : 'このエリア';
+
+                // マップ上に表示されている全ピン（spotMarkers）の中から、
+                // 今回クリックされたクラスタには含まれていない ＆ 同じエリアのピンを最大10件取得
+                const sameAreaSpots = spotMarkers.filter(item => {
+                    const itemAreaKey = item.data.area || determineAreaFromLatLng(item.data.lat, item.data.lng).key;
+                    // 同じエリア かつ クラスタ内に存在しない かつ 表示設定を満たしている
+                    return itemAreaKey === currentSpotAreaKey && !cluster.markers.some(cm => cm.data.id === item.data.id) && item.isFreshShow;
+                }).slice(0, 10);
+
+                if (sameAreaSpots.length > 0) {
+                    areaTimelineHtml += `
+                        <div class="mt-4 pt-2 border-t border-gray-300 dark:border-gray-700">
+                            <div class="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 text-xs font-bold flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
+                                <span>🗺️ ${currentAreaName} の最新情報</span>
+                                <span class="bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full text-[10px]">${sameAreaSpots.length}件</span>
+                            </div>
+                            <div class="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900 pb-12">
+                    `;
+                    
+                    sameAreaSpots.forEach(item => {
+                        areaTimelineHtml += generateFullPostCardHtml(item.data, false);
+                    });
+                    
+                    areaTimelineHtml += `</div></div>`;
+                } else {
+                    areaTimelineHtml += `
+                        <div class="mt-6 p-4 text-center text-gray-500 text-xs bg-gray-50 dark:bg-gray-800 rounded-xl mx-4 mb-12">
+                            現在、${currentAreaName}の他の最新情報はありません。
+                        </div>
+                    `;
+                }
+                
+                // 3. メイン投稿群とエリア投稿群を合体させて表示
+                document.getElementById('spotDetailContent').innerHTML = htmlContent + areaTimelineHtml;
+                document.getElementById('spotDetailModal').classList.remove('hidden');
+                
+                map.panTo(leader.marker.getPosition());
+                setTimeout(() => map.panBy(0, 150), 100);
+            });
+        });
+    }
 
     const AREA_DEFINITIONS = {
         okayama_city: { name: '🏙️ 岡山・駅前エリア', lat: 34.6655, lng: 133.9180 },
@@ -393,7 +514,7 @@
         if (modalContent) modalContent.scrollTop = 0; 
         
         const targetMarkerObj = spotMarkers.find(item => item.data.id === spotId);
-        if (targetMarkerObj) {
+        if (targetMarkerObj && targetMarkerObj.marker.getMap()) {
             google.maps.event.trigger(targetMarkerObj.marker, 'click');
         } else {
             map.setCenter({ lat: parseFloat(lat), lng: parseFloat(lng) });
@@ -574,7 +695,7 @@
         const bookmarkColorClass = s.is_bookmarked ? 'text-green-500' : 'text-gray-500 hover:text-green-500';
 
         return `
-            <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 ${isMain ? 'mb-4 rounded-2xl shadow-sm border' : ''}" ${isMain ? '' : `onclick="jumpToSpotOnMap(${s.lat}, ${s.lng},${s.id})"`}>
+            <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 ${isMain ? 'mb-4 rounded-2xl shadow-sm border' : ''}">
                 
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3 cursor-pointer" onclick="event.stopPropagation(); window.location.href='${profileUrl}';">
@@ -622,11 +743,9 @@
                             <span class="text-lg" id="bookmark-icon-${s.id}">${s.is_bookmarked ? '📑' : '🔖'}</span>
                         </button>
                     </div>
-                    ${isMain ? `
-                        <a href="${naviUrl}" target="_blank" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-full shadow-sm active:scale-95 transition flex items-center gap-1" onclick="event.stopPropagation();">
-                            🗺️ ナビ起動
-                        </a>
-                    ` : ''}
+                    <a href="${naviUrl}" target="_blank" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-full shadow-sm active:scale-95 transition flex items-center gap-1" onclick="event.stopPropagation();">
+                        🗺️ ナビ起動
+                    </a>
                 </div>
             </div>
         `;
@@ -637,66 +756,17 @@
         
         const sMarker = new google.maps.Marker({
             position: { lat: spot.lat, lng: spot.lng }, 
-            map: map, 
+            map: null, 
             zIndex: zIndexValue, 
-            icon: { path: pinSVGHole, scale: 1.5, fillColor: '#9ca3af', fillOpacity: 1, strokeWeight: 1, strokeColor: "#ffffff", anchor: new google.maps.Point(12, 22), labelOrigin: new google.maps.Point(12, -8) }
+            icon: { path: modernSolidPinSVG, scale: 1.6, fillColor: '#9ca3af', fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff", anchor: new google.maps.Point(12, 22), labelOrigin: new google.maps.Point(12, 0) }
         });
         
         spotMarkers.push({ marker: sMarker, data: spot, isFreshShow: true });
 
-        if (currentRadius !== 'all') {
-            sMarker.setLabel({ text: spot.content.substring(0, 15) + '...', className: 'spot-custom-label' });
-        }
-
-        sMarker.addListener('click', () => {
-            pinDropSound.currentTime = 0; 
-            pinDropSound.play().catch(e => {});
-
-            document.getElementById('detailSpotName').innerText = spot.spot_name;
-
-            const mainCardHtml = generateFullPostCardHtml(spot, true);
-
-            let areaTimelineHtml = '';
-            const currentSpotAreaKey = spot.area || determineAreaFromLatLng(spot.lat, spot.lng).key;
-            const currentAreaName = AREA_DEFINITIONS[currentSpotAreaKey] ? AREA_DEFINITIONS[currentSpotAreaKey].name : 'このエリア';
-
-            const sameAreaSpots = spotMarkers.filter(item => {
-                const itemAreaKey = item.data.area || determineAreaFromLatLng(item.data.lat, item.data.lng).key;
-                return itemAreaKey === currentSpotAreaKey && item.data.id !== spot.id && item.isFreshShow;
-            }).slice(0, 10);
-
-            if (sameAreaSpots.length > 0) {
-                areaTimelineHtml += `
-                    <div class="mt-4 pt-2 border-t border-gray-300 dark:border-gray-700">
-                        <div class="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 text-xs font-bold flex items-center justify-between sticky top-0 z-10 backdrop-blur-md">
-                            <span>🗺️ ${currentAreaName} の最新情報</span>
-                            <span class="bg-white dark:bg-gray-800 px-2 py-0.5 rounded-full text-[10px]">${sameAreaSpots.length}件</span>
-                        </div>
-                        <div class="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-900 pb-12">
-                `;
-                
-                sameAreaSpots.forEach(item => {
-                    areaTimelineHtml += generateFullPostCardHtml(item.data, false);
-                });
-                
-                areaTimelineHtml += `</div></div>`;
-            } else {
-                areaTimelineHtml += `
-                    <div class="mt-6 p-4 text-center text-gray-500 text-xs bg-gray-50 dark:bg-gray-800 rounded-xl mx-4 mb-12">
-                        現在、${currentAreaName}の他の最新情報はありません。
-                    </div>
-                `;
-            }
-            
-            document.getElementById('spotDetailContent').innerHTML = mainCardHtml + areaTimelineHtml;
-            document.getElementById('spotDetailModal').classList.remove('hidden');
-            
-            map.panTo(sMarker.getPosition());
-            setTimeout(() => map.panBy(0, 150), 100);
-        });
+        applyFreshnessToAllMarkers();
 
         if (openImmediately) {
-            setTimeout(() => { google.maps.event.trigger(sMarker, 'click'); }, 500);
+            setTimeout(() => { jumpToSpotOnMap(spot.lat, spot.lng, spot.id); }, 500);
         }
     }
 
@@ -707,7 +777,6 @@
         const paramLat = parseFloat(params.get('lat'));
         const paramLng = parseFloat(params.get('lng'));
         const paramSpotId = parseInt(params.get('spot'));
-        // ★追加：?action=post というパラメータがあったら投稿モーダルを開く
         const actionParam = params.get('action');
 
         const hasParam = !isNaN(paramLat) && !isNaN(paramLng);
@@ -731,12 +800,22 @@
         infoWindow = new google.maps.InfoWindow({ zIndex: 999 });
 
         initialSpots.forEach(spot => {
-            const shouldOpenImmediately = (spot.id === paramSpotId);
-            addSpotMarkerToMap(spot, shouldOpenImmediately);
+            const zIndexValue = spot.created_timestamp ? parseInt(spot.created_timestamp, 10) : 0;
+            const sMarker = new google.maps.Marker({
+                position: { lat: spot.lat, lng: spot.lng }, 
+                map: null, 
+                zIndex: zIndexValue, 
+                icon: { path: modernSolidPinSVG, scale: 1.6, fillColor: '#9ca3af', fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff", anchor: new google.maps.Point(12, 22), labelOrigin: new google.maps.Point(12, 0) }
+            });
+            spotMarkers.push({ marker: sMarker, data: spot, isFreshShow: true });
         });
 
         applyFreshnessToAllMarkers();
         setInterval(applyFreshnessToAllMarkers, 60000);
+        
+        if (hasParam && !isNaN(paramSpotId)) {
+            setTimeout(() => { jumpToSpotOnMap(paramLat, paramLng, paramSpotId); }, 500);
+        }
 
         map.addListener('click', (event) => {
             const pos = { lat: event.latLng.lat(), lng: event.latLng.lng() };
@@ -776,9 +855,7 @@
                         icon: { path: google.maps.SymbolPath.CIRCLE, scale: 8, fillColor: "#ea4335", fillOpacity: 1, strokeWeight: 2, strokeColor: "#ffffff" }
                     });
 
-                    // ★追加：アクションが 'post' なら、現在地を取得した直後に自動で投稿モーダルを開く
                     if (actionParam === 'post') {
-                        // 少しだけ待機（地図の中心が現在地に移動しきるのを待つ）して開く
                         setTimeout(() => {
                             openSpotModal(originPos.lat, originPos.lng, '現在地からの投稿');
                         }, 600);
@@ -786,7 +863,6 @@
                 },
                 (err) => {
                     console.warn("GPSエラー:", err.message);
-                    // ★追加：GPSが取得できなかった場合も、デフォルト位置でモーダルを開く
                     if (actionParam === 'post') {
                         setTimeout(() => {
                             openSpotModal(originPos.lat, originPos.lng, '位置情報取得エラー');
@@ -809,7 +885,6 @@
                 geoOptions
             );
         } else {
-            // ★追加：ブラウザがGPS非対応の場合
             if (actionParam === 'post') {
                 setTimeout(() => {
                     openSpotModal(originPos.lat, originPos.lng, '');
@@ -850,7 +925,6 @@
 
     let map, geocoder, placesService, infoWindow, userMarker = null, tempClickMarker = null;
     let spotMarkers = [], spotsVisible = true, currentRadius = 'all', userPosAcquired = false;
-    // 初期値としての岡山市中心部
     let originPos = { lat: 34.6655, lng: 133.9180 }; 
     const initialSpots = JSON.parse(document.getElementById('initial-spots-data').textContent);
 
@@ -893,28 +967,7 @@
     function closeSpotDetailModal() { document.getElementById('spotDetailModal').classList.add('hidden'); }
 
     function updateMarkersVisibility() {
-        spotMarkers.forEach(item => {
-            let shouldDisplay = spotsVisible && item.isFreshShow;
-            
-            item.marker.setMap(shouldDisplay ? map : null);
-
-            if (shouldDisplay && currentRadius !== 'all') {
-                let contentText = item.data.content || '';
-                contentText = contentText.replace(/\n/g, ' '); 
-                if (contentText.length > 20) {
-                    contentText = contentText.substring(0, 20) + '...'; 
-                }
-                
-                const currentColor = item.marker.getIcon().fillColor;
-                item.marker.setLabel({
-                    text: contentText,
-                    className: 'spot-custom-label',
-                    color: currentColor
-                });
-            } else {
-                item.marker.setLabel(null);
-            }
-        });
+        applyFreshnessToAllMarkers();
     }
 
     function changeZoomLevel(radiusStr, btnElement) {
@@ -1053,7 +1106,6 @@
                 closeSpotModal(); form.reset(); clearSpotImage(); 
                 if(tempClickMarker) tempClickMarker.setMap(null);
                 addSpotMarkerToMap(data.spot); 
-                applyFreshnessToAllMarkers(); 
             } else { alert("エラー: " + data.message); }
         } catch(e) { alert("エラーが発生しました。"); }
         btn.disabled = false; btn.innerText = "📍 マップに登録する";
