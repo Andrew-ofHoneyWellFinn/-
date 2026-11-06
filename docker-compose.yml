@@ -1,0 +1,15 @@
+version: "3.9"
+
+services:
+  python3:
+    build: .
+    ports:
+      - "5001:8000"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DJANGO_SETTINGS_MODULE=config.settings
+    
+    # ★修正：配列ではなく、シンプルな文字列で指定します（Linux標準の待機コマンド）
+    command: tail -f /dev/null
